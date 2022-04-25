@@ -30,12 +30,13 @@ type Raft struct {
 	matchIndex []int // for each server, index of highest log entry known to be replicated on server
 
 	// Timer
-	electionSignalChan     chan bool
-	heartbeatSignalChan    chan bool
+	electionSignalChan chan bool
+	// heartbeat and appendEntries are handled together
+	broadcastSignalChan    chan bool
 	lastResetElectionTime  int64
-	lastResetHeartbeatTime int64
+	lastResetBroadcastTime int64
 	electionTimeout        int64
-	heartbeatTimeout       int64
+	broadcastTimeout       int64
 }
 
 type LogEntry struct {
