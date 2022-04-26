@@ -1,7 +1,9 @@
 package raft
 
 import (
+	"6.824/labgob"
 	"6.824/labrpc"
+	"bytes"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -33,7 +35,7 @@ func (rf *Raft) electionTimerReset() {
 	// set last reset time to now
 	rf.lastResetElectionTime = time.Now().UnixMilli()
 	// create new random timeout after reset
-	rf.electionTimeout = rf.broadcastTimeout*3 + rand.Int63n(150)
+	rf.electionTimeout = rf.broadcastTimeout*5 + rand.Int63n(150)
 }
 
 // broadcast timer (Only used when leader)
@@ -80,6 +82,8 @@ func (rf *Raft) startElection() {
 	rf.mu.Lock()
 	// convertTo candidate including reset timeout and make currentTerm+1
 	rf.convertTo(CANDIDATE)
+	// persist the state
+	rf.persist()
 	// already vote for itself
 	voteCnt := 1
 	rf.mu.Unlock()
@@ -135,6 +139,7 @@ func (rf *Raft) startElection() {
 					if rf.currentTerm < reply.Term {
 						rf.convertTo(FOLLOWER)
 						rf.currentTerm = reply.Term
+						rf.persist()
 					}
 				}
 			} else {
@@ -205,11 +210,16 @@ func (rf *Raft) broadcast() {
 					if rf.currentTerm < reply.Term {
 						rf.convertTo(FOLLOWER)
 						rf.currentTerm = reply.Term
+						rf.persist()
 						rf.mu.Unlock()
 						return
 					}
 					// update the AppendEntriesArgs and retry
-					rf.nextIndex[id] = reply.ConflictIndex
+					if reply.ConflictIndex == 0 {
+						rf.nextIndex[id] = 1
+					} else {
+						rf.nextIndex[id] = reply.ConflictIndex
+					}
 					DPrintf("[appendEntriesAsync] raft %d append entries to %d rejected: decrement nextIndex and retry | nextIndex: %d\n",
 						rf.me, id, rf.nextIndex[id])
 					rf.mu.Unlock()
@@ -220,8 +230,8 @@ func (rf *Raft) broadcast() {
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
 				// failed broadcasting
-				DPrintf("[broadcast | no reply] raft %d RPC to %d failed | current term: %d | current state: %d | reply term: %d\n",
-					rf.me, id, rf.currentTerm, rf.state, reply.Term)
+				DPrintf("[broadcast | no reply] raft %d RPC to %d failed | current term: %d | current state: %d \n",
+					rf.me, id, rf.currentTerm, rf.state)
 			}
 		}(i)
 	}
@@ -256,18 +266,16 @@ func (rf *Raft) GetState() (int, bool) {
 	return term, isLeader
 }
 
-// save Raft's persistent state to stable storage,
-// where it can later be retrieved after a crash and restart.
-// see paper's Figure 2 for a description of what should be persistent.
+// Save Raft's persistent state to stable storage,
 func (rf *Raft) persist() {
-	// Your code here (2C).
-	// Example:
-	// w := new(bytes.Buffer)
-	// e := labgob.NewEncoder(w)
-	// e.Encode(rf.xxx)
-	// e.Encode(rf.yyy)
-	// data := w.Bytes()
-	// rf.persister.SaveRaftState(data)
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(rf.currentTerm)
+	e.Encode(rf.votedFor)
+	e.Encode(rf.log)
+	data := w.Bytes()
+	rf.persister.SaveRaftState(data)
+	DPrintf("[persist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n", rf.me, rf.currentTerm, rf.votedFor, len(rf.log))
 }
 
 // restore previously persisted state.
@@ -275,19 +283,23 @@ func (rf *Raft) readPersist(data []byte) {
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
-	// Your code here (2C).
-	// Example:
-	// r := bytes.NewBuffer(data)
-	// d := labgob.NewDecoder(r)
-	// var xxx
-	// var yyy
-	// if d.Decode(&xxx) != nil ||
-	//    d.Decode(&yyy) != nil {
-	//   error...
-	// } else {
-	//   rf.xxx = xxx
-	//   rf.yyy = yyy
-	// }
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	var currentTerm int
+	var votedFor int
+	var log []LogEntry
+
+	if d.Decode(&currentTerm) != nil ||
+		d.Decode(&votedFor) != nil ||
+		d.Decode(&log) != nil {
+		DPrintf("[readPersist] error\n")
+	} else {
+		rf.currentTerm = currentTerm
+		rf.votedFor = votedFor
+		rf.log = log
+	}
+
+	DPrintf("[readPersist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n", rf.me, rf.currentTerm, rf.votedFor, len(log))
 }
 
 // A service wants to switch to snapshot.  Only do so if Raft hasn't
@@ -313,6 +325,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	if args.Term > rf.currentTerm {
 		rf.currentTerm = args.Term
 		rf.convertTo(FOLLOWER)
+		rf.persist()
 	}
 	// do not grant vote due to smaller term or already voted for another one
 	if args.Term < rf.currentTerm || (rf.votedFor != -1 && rf.votedFor != args.CandidateId) {
@@ -336,6 +349,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		rf.votedFor = args.CandidateId
 		// avoid two election proceeding in parallel
 		rf.electionTimerReset()
+		rf.persist()
 		reply.Term = rf.currentTerm
 		reply.VoteGranted = true
 		DPrintf("[RequestVote] raft %d accept vote for %d | current term: %d | current state: %d | recieved term: %d\n",
@@ -371,6 +385,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if args.Term >= rf.currentTerm {
 		rf.convertTo(FOLLOWER)
 		rf.currentTerm = args.Term
+		rf.persist()
 		DPrintf("[AppendEntries| big term or has leader] raft %d update term or state | current term: %d | current state: %d | recieved term: %d\n",
 			rf.me, rf.currentTerm, rf.state, args.Term)
 	}
@@ -384,7 +399,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			reply.ConflictIndex = len(rf.log)
 		} else {
 			// search for the ConflictIndex forward
-			for i := args.PrevLogIndex; i >= 0; i-- {
+			for i := args.PrevLogIndex; i > 0; i-- {
 				if rf.log[i].Term != rf.log[i-1].Term {
 					reply.ConflictIndex = i
 					break
@@ -392,21 +407,29 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			}
 		}
 	} else {
-		isMatch := true
+		including := true
 		nextIndex := args.PrevLogIndex + 1
 		conflictIndex := 0
 		logLen := len(rf.log)
 		entLen := len(args.Entries)
-		// do the matching
-		for i := 0; isMatch && i < entLen; i++ {
+		// check the including of current new log entries
+		for i := 0; i < entLen; i++ {
 			if ((logLen - 1) < (nextIndex + i)) || rf.log[nextIndex+i].Term != args.Entries[i].Term {
-				isMatch = false
+				including = false
 				conflictIndex = i
 				break
 			}
 		}
-		if !isMatch {
-			rf.log = append(rf.log[:nextIndex+conflictIndex], args.Entries[conflictIndex:]...)
+		if !including {
+			// can not directly call append() since there will be a data race
+			//newLog := make([]LogEntry, 0, len(rf.log[:nextIndex+conflictIndex]))
+			//newLog = append(newLog, rf.log[:nextIndex+conflictIndex]...)
+			//newLog = append(rf.log[:nextIndex+conflictIndex], args.Entries[conflictIndex:]...)
+			newEntries := make([]LogEntry, len(args.Entries[conflictIndex:]))
+			copy(newEntries, args.Entries[conflictIndex:])
+			rf.log = append(rf.log[:nextIndex+conflictIndex], newEntries...)
+			//rf.log = newLog
+			rf.persist()
 			DPrintf("[AppendEntries] raft %d appended entries from leader | log length: %d\n", rf.me, len(rf.log))
 		}
 		lastNewEntryIndex := args.PrevLogIndex + entLen
@@ -465,6 +488,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if term, isLeader = rf.GetState(); isLeader {
 		rf.mu.Lock()
 		rf.log = append(rf.log, LogEntry{Command: command, Term: rf.currentTerm})
+		rf.persist()
 		rf.matchIndex[rf.me] = len(rf.log) - 1
 		index = len(rf.log) - 1
 		DPrintf("[Start] raft %d replicate command to log | current term: %d | current state: %d | log length: %d\n",
@@ -508,6 +532,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.commitIndex = 0
 	rf.lastApplied = 0
 	rf.applyCh = applyCh
+
+	// bootstrap from a persisted state
+	rf.readPersist(persister.ReadRaftState())
 
 	DPrintf("Starting raft %d\n", me)
 	// do correspond action according to the channel
