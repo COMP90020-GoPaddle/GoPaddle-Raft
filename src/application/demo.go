@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 	"image/color"
@@ -33,6 +34,7 @@ func main() {
 	w2.Resize(fyne.NewSize(220, 240))
 	w2.SetFixedSize(true)
 
+	var array []string
 	//w
 	text1 := canvas.NewText("GoPaddle", color.White)
 	text1.Alignment = fyne.TextAlignCenter
@@ -67,30 +69,65 @@ func main() {
 	reliable := widget.NewCheck("Reliable Network", nil)
 	confirmBtn := widget.NewButton("Confirm", func() {
 		num, _ := strconv.Atoi(selectNum.Selected)
+		// create raft server here and store it into corresponding index
+		array = make([]string, num+1)
+		//unchanged
+		labels := []string{"State", "currentTerm", "votedFor", "commitIndex", "lastApplied"}
+		values := make([]binding.ExternalStringList, num+1)
 		for i := 1; i <= num; i++ {
 			index := i
 			go func() {
+				// bind each widget to its raft server
+				array[index] = "raft server" + strconv.Itoa(index)
+				values[index] = binding.BindStringList(
+					&[]string{"Item 1", "Item 2", "Item 3", "Item 4", "Item 5"},
+				)
 				text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
 				text1.TextSize = 20
 				text1.Alignment = fyne.TextAlignCenter
 				text2 := canvas.NewText("Server Info", color.White)
 				text2.TextSize = 20
 				text2.Alignment = fyne.TextAlignCenter
+				labelList := widget.NewList(
+					func() int {
+						return len(labels)
+					},
+					func() fyne.CanvasObject {
+						return widget.NewLabel("template")
+					},
+					func(i widget.ListItemID, o fyne.CanvasObject) {
+						o.(*widget.Label).SetText(labels[i])
+					})
+
+				valueList := widget.NewListWithData(values[index],
+					func() fyne.CanvasObject {
+						return widget.NewLabel("template")
+					},
+					func(i binding.DataItem, o fyne.CanvasObject) {
+						o.(*widget.Label).Bind(i.(binding.String))
+					})
+				labelList.Resize(fyne.NewSize(120, 200))
+				valueList.Resize(fyne.NewSize(60, 200))
 				btn1 := widget.NewButton("Check Log", func() {
-					fmt.Println("this is check log button " + strconv.Itoa(index))
+					fmt.Println("should check log of " + array[index])
+					values[index].SetValue(2, "changed")
 				})
 				btn1.Resize(fyne.NewSize(150, 50))
 				btn2 := widget.NewButton("Disconnect", func() {
-					fmt.Println("this is disconnect button " + strconv.Itoa(index))
+					fmt.Println("should disconnect " + array[index])
 				})
 				btn2.Resize(fyne.NewSize(150, 50))
 
 				text1.Move(fyne.NewPos(float32(150+(index-1)*250), 25))
 				text2.Move(fyne.NewPos(float32(150+(index-1)*250), 55))
+				labelList.Move(fyne.NewPos(float32(50+(index-1)*250), 100))
+				valueList.Move(fyne.NewPos(float32(190+(index-1)*250), 100))
 				btn1.Move(fyne.NewPos(float32(75+(index-1)*250), 650))
 				btn2.Move(fyne.NewPos(float32(75+(index-1)*250), 700))
 				serverContainer.Add(text1)
 				serverContainer.Add(text2)
+				serverContainer.Add(labelList)
+				serverContainer.Add(valueList)
 				serverContainer.Add(btn1)
 				serverContainer.Add(btn2)
 				serverContainer.Refresh()
