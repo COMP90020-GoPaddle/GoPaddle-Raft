@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"6.824/labrpc"
+	"GoPaddle-Raft/labrpc"
 )
 
 type Clerk struct {
