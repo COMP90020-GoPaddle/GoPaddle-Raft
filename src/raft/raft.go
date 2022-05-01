@@ -1,8 +1,8 @@
 package raft
 
 import (
-	"6.824/labgob"
-	"6.824/labrpc"
+	"GoPaddle-Raft/labgob"
+	"GoPaddle-Raft/labrpc"
 	"bytes"
 	"math/rand"
 	"sync"
