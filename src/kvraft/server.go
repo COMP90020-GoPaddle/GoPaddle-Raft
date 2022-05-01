@@ -189,7 +189,6 @@ func (kv *KVServer) Listener() {
 		if !applyMsg.CommandValid {
 			continue
 		}
-		DPrintf("Here command is: %v", Op{})
 		operation := applyMsg.Command.(Op)
 		kv.mu.Lock()
 
@@ -207,6 +206,8 @@ func (kv *KVServer) Listener() {
 			kv.kvStore[operation.Key] += operation.Value
 		}
 		DPrintf("ApplyMsg[%v] Operation: %v, Database: %v", applyMsg, operation, kv.kvStore[operation.Key])
+		//fmt.Printf("ApplyMsg[%v] Operation: %v, Database: %v\n", applyMsg, operation, kv.kvStore[operation.Key])
+		fmt.Printf("ApplyMsg: %v, Operation: %v\n", applyMsg.Command, operation.Value)
 		DPrintf("Client[%v]: RequestId: %v", operation.ClientId, operation.RequestId)
 
 		// Update requestId
