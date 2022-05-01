@@ -37,6 +37,9 @@ type Raft struct {
 	lastResetBroadcastTime int64
 	electionTimeout        int64
 	broadcastTimeout       int64
+
+	// Apply signal for new committed entry when updating the commitIndex
+	applyCond *sync.Cond
 }
 
 type LogEntry struct {
