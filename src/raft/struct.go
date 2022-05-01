@@ -6,7 +6,7 @@ import (
 )
 
 type Raft struct {
-	mu        sync.RWMutex        // Lock to protect shared access to this peer's state
+	mu        sync.Mutex          // Lock to protect shared access to this peer's state
 	peers     []*labrpc.ClientEnd // RPC end points of all peers
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
@@ -37,6 +37,9 @@ type Raft struct {
 	lastResetBroadcastTime int64
 	electionTimeout        int64
 	broadcastTimeout       int64
+	// signals of appendEntriesTimer and electionTimer
+	leaderCond    *sync.Cond
+	nonLeaderCond *sync.Cond
 
 	// Apply signal for new committed entry when updating the commitIndex
 	applyCond *sync.Cond

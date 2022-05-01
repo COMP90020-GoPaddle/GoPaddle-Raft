@@ -14,19 +14,22 @@ import (
 func (rf *Raft) electionTimer() {
 	// use goroutine to keep running
 	for {
-		rf.mu.RLock()
-		// whenever find the cur state is not leader
-		if rf.state != LEADER {
-			elapse := time.Now().UnixMilli() - rf.lastResetElectionTime
-			// notify the raft server to initialize election when election timeout
-			if elapse > rf.electionTimeout {
-				DPrintf("[electionTimer] | raft %d election timeout %d | current term: %d | current state: %d\n",
-					rf.me, rf.electionTimeout, rf.currentTerm, rf.state)
-				rf.electionSignalChan <- true
-			}
+		rf.mu.Lock()
+		if rf.state == LEADER { // if is leader now, block the electionTimer
+			rf.nonLeaderCond.Wait()
 		}
-		rf.mu.RUnlock()
-		// use sleep to avoid holding the lock
+		// whenever find the cur state is not leader
+		elapse := time.Now().UnixMilli() - rf.lastResetElectionTime
+		// notify the raft server to initialize election when election timeout
+		if elapse > rf.electionTimeout {
+			DPrintf("[electionTimer] | raft %d election timeout %d | current term: %d | current state: %d\n",
+				rf.me, rf.electionTimeout, rf.currentTerm, rf.state)
+			rf.mu.Unlock()
+			rf.electionSignalChan <- true
+			rf.mu.Lock()
+		}
+		rf.mu.Unlock()
+		// use sleep to avoid frequently checking
 		time.Sleep(ElectionTimerInterval)
 	}
 }
@@ -36,26 +39,28 @@ func (rf *Raft) electionTimerReset() {
 	// set last reset time to now
 	rf.lastResetElectionTime = time.Now().UnixMilli()
 	// create new random timeout after reset
-	rf.electionTimeout = rf.broadcastTimeout*3 + rand.Int63n(150)
+	rf.electionTimeout = rf.broadcastTimeout*2 + rand.Int63n(250)
 }
 
 // broadcast timer (Only used when leader)
 func (rf *Raft) broadcastTimer() {
 	// use goroutine to keep running
 	for {
-		rf.mu.RLock()
-		// confirm that the current state is leader
-		if rf.state == LEADER {
-			elapse := time.Now().UnixMilli() - rf.lastResetBroadcastTime
-			// notify the raft server(leader) to broadcast when broadcast timeout
-			if elapse > rf.broadcastTimeout {
-				DPrintf("[broadcastTimer] | leader raft %d  broadcast timeout | current term: %d | current state: %d\n",
-					rf.me, rf.currentTerm, rf.state)
-				rf.broadcastSignalChan <- true
-			}
+		rf.mu.Lock()
+		if rf.state != LEADER { // if is not leader now, block the broadcastTimer
+			rf.leaderCond.Wait()
 		}
-		rf.mu.RUnlock()
-		// use sleep to avoid holding the lock
+		elapse := time.Now().UnixMilli() - rf.lastResetBroadcastTime
+		// notify the raft server(leader) to broadcast when broadcast timeout
+		if elapse > rf.broadcastTimeout {
+			DPrintf("[broadcastTimer] | leader raft %d  broadcast timeout | current term: %d | current state: %d\n",
+				rf.me, rf.currentTerm, rf.state)
+			rf.mu.Unlock()
+			rf.broadcastSignalChan <- true
+			rf.mu.Lock()
+		}
+		rf.mu.Unlock()
+		// use sleep to avoid frequently checking
 		time.Sleep(BroadcastTimerInterval)
 	}
 }
@@ -71,13 +76,17 @@ func (rf *Raft) mainLoop() {
 		select {
 		// only one of the cases will be satisfied
 		case <-rf.broadcastSignalChan:
+			rf.mu.Lock()
 			DPrintf("[mainLoop-startBroadCast] | raft %d  start broadcast | current term: %d | current state: %d\n",
 				rf.me, rf.currentTerm, rf.state)
-			rf.broadcast()
+			rf.mu.Unlock()
+			go rf.broadcast()
 		case <-rf.electionSignalChan:
+			rf.mu.Lock()
 			DPrintf("[mainLoop-Election] | raft %d  start Election | current term: %d | current state: %d\n",
 				rf.me, rf.currentTerm, rf.state)
-			rf.startElection()
+			rf.mu.Unlock()
+			go rf.startElection()
 		}
 	}
 }
@@ -191,10 +200,10 @@ func (rf *Raft) broadcast() {
 		// for each follower start a goroutine to broadcast heartbeat and appendEntries
 		go func(id int, curTerm int) {
 		RETRY:
-			rf.mu.RLock()
+			rf.mu.Lock()
 			// check whether current server's term is changed
 			if curTerm != rf.currentTerm {
-				rf.mu.RUnlock()
+				rf.mu.Unlock()
 				return
 			}
 			args := &AppendEntriesArgs{
@@ -206,7 +215,7 @@ func (rf *Raft) broadcast() {
 				Entries:      rf.log[rf.nextIndex[id]:],
 				LeaderCommit: rf.commitIndex,
 			}
-			rf.mu.RUnlock()
+			rf.mu.Unlock()
 			reply := &AppendEntriesReply{}
 			// state of broadcasting
 			if rf.sendAppendEntries(id, args, reply) {
@@ -284,8 +293,8 @@ func (rf *Raft) checkN() {
 
 // GetState return currentTerm and whether this server believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
-	rf.mu.RLock()
-	defer rf.mu.RUnlock()
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	term := rf.currentTerm
 	isLeader := rf.state == LEADER
 	return term, isLeader
@@ -510,12 +519,12 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 // long-running goroutine function, which keep applying new entry to application
 func (rf *Raft) applyEntries() {
 	for {
-		rf.mu.RLock()
+		rf.mu.Lock()
 		commitIndex := rf.commitIndex
 		lastApplied := rf.lastApplied
 		DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tlastApplied %d and commitIndex %d\n",
 			rf.me, rf.currentTerm, rf.state, lastApplied, commitIndex)
-		rf.mu.RUnlock()
+		rf.mu.Unlock()
 
 		if lastApplied == commitIndex {
 			rf.mu.Lock()
@@ -541,6 +550,8 @@ func (rf *Raft) applyEntries() {
 
 // State conversion, should be within writeLock
 func (rf *Raft) convertTo(state int) {
+	oldState := rf.state
+	newState := state
 	switch state {
 	case FOLLOWER:
 		rf.electionTimerReset()
@@ -548,13 +559,20 @@ func (rf *Raft) convertTo(state int) {
 		rf.state = FOLLOWER
 	case CANDIDATE:
 		rf.electionTimerReset()
-		rf.state = CANDIDATE
 		rf.currentTerm++
 		rf.votedFor = rf.me
+		rf.state = CANDIDATE
 	case LEADER:
 		// broadcast includes heartbeat and appendEntries
 		rf.broadcastTimerReset()
 		rf.state = LEADER
+	}
+
+	// send signal to awake timer
+	if oldState == LEADER && newState == FOLLOWER {
+		rf.nonLeaderCond.Broadcast()
+	} else if oldState == CANDIDATE && newState == LEADER {
+		rf.leaderCond.Broadcast()
 	}
 }
 
@@ -612,6 +630,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.applyCh = applyCh
 
 	rf.applyCond = sync.NewCond(&rf.mu)
+	rf.nonLeaderCond = sync.NewCond(&rf.mu)
+	rf.leaderCond = sync.NewCond(&rf.mu)
 
 	// bootstrap from a persisted state
 	rf.readPersist(persister.ReadRaftState())
