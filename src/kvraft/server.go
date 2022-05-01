@@ -6,9 +6,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"6.824/labgob"
-	"6.824/labrpc"
-	"6.824/raft"
+	"GoPaddle-Raft/labgob"
+	"GoPaddle-Raft/labrpc"
+	"GoPaddle-Raft/raft"
 )
 
 const Debug = false
