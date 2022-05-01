@@ -480,7 +480,8 @@ func (rf *Raft) convertTo(state int) {
 	}
 }
 
-// Start take a command as input and return the index of next logEntry, current term and if this server believes it is the leader
+// Start take a command as input and
+//return the index of next logEntry, current term and if this server believes it is the leader
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	index := -1
 	term := -1

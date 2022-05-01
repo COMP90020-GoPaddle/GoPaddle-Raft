@@ -1,6 +1,6 @@
 package models
 
-import "6.824/porcupine"
+import "GoPaddle-Raft/porcupine"
 import "fmt"
 import "sort"
 
