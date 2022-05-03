@@ -15,15 +15,15 @@ func (rf *Raft) electionTimer() {
 	// use goroutine to keep running
 	for {
 		rf.mu.Lock()
-		if rf.state == LEADER { // if is leader now, block the electionTimer
+		if rf.State == LEADER { // if is leader now, block the electionTimer
 			rf.nonLeaderCond.Wait()
 		}
-		// whenever find the cur state is not leader
+		// whenever find the cur State is not leader
 		elapse := time.Now().UnixMilli() - rf.lastResetElectionTime
 		// notify the raft server to initialize election when election timeout
 		if elapse > rf.electionTimeout {
-			DPrintf("[electionTimer] | raft %d election timeout %d | current term: %d | current state: %d\n",
-				rf.me, rf.electionTimeout, rf.currentTerm, rf.state)
+			DPrintf("[electionTimer] | raft %d election timeout %d | current term: %d | current State: %d\n",
+				rf.Me, rf.electionTimeout, rf.CurrentTerm, rf.State)
 			rf.mu.Unlock()
 			rf.electionSignalChan <- true
 			rf.mu.Lock()
@@ -47,14 +47,14 @@ func (rf *Raft) broadcastTimer() {
 	// use goroutine to keep running
 	for {
 		rf.mu.Lock()
-		if rf.state != LEADER { // if is not leader now, block the broadcastTimer
+		if rf.State != LEADER { // if is not leader now, block the broadcastTimer
 			rf.leaderCond.Wait()
 		}
 		elapse := time.Now().UnixMilli() - rf.lastResetBroadcastTime
 		// notify the raft server(leader) to broadcast when broadcast timeout
 		if elapse > rf.broadcastTimeout {
-			DPrintf("[broadcastTimer] | leader raft %d  broadcast timeout | current term: %d | current state: %d\n",
-				rf.me, rf.currentTerm, rf.state)
+			DPrintf("[broadcastTimer] | leader raft %d  broadcast timeout | current term: %d | current State: %d\n",
+				rf.Me, rf.CurrentTerm, rf.State)
 			rf.mu.Unlock()
 			rf.broadcastSignalChan <- true
 			rf.mu.Lock()
@@ -77,14 +77,14 @@ func (rf *Raft) mainLoop() {
 		// only one of the cases will be satisfied
 		case <-rf.broadcastSignalChan:
 			rf.mu.Lock()
-			DPrintf("[mainLoop-startBroadCast] | raft %d  start broadcast | current term: %d | current state: %d\n",
-				rf.me, rf.currentTerm, rf.state)
+			DPrintf("[mainLoop-startBroadCast] | raft %d  start broadcast | current term: %d | current State: %d\n",
+				rf.Me, rf.CurrentTerm, rf.State)
 			rf.mu.Unlock()
 			go rf.broadcast()
 		case <-rf.electionSignalChan:
 			rf.mu.Lock()
-			DPrintf("[mainLoop-Election] | raft %d  start Election | current term: %d | current state: %d\n",
-				rf.me, rf.currentTerm, rf.state)
+			DPrintf("[mainLoop-Election] | raft %d  start Election | current term: %d | current State: %d\n",
+				rf.Me, rf.CurrentTerm, rf.State)
 			rf.mu.Unlock()
 			go rf.startElection()
 		}
@@ -95,21 +95,21 @@ func (rf *Raft) mainLoop() {
 func (rf *Raft) startElection() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	// convertTo candidate including reset timeout and make currentTerm+1
+	// convertTo candidate including reset timeout and make CurrentTerm+1
 	rf.convertTo(CANDIDATE)
-	// persist the state
+	// persist the State
 	rf.persist()
 	// already vote for itself
 	voteCnt := 1
 	lastLogIndex := len(rf.log) - 1
 	args := &RequestVoteArgs{
-		Term:         rf.currentTerm,
-		CandidateId:  rf.me,
+		Term:         rf.CurrentTerm,
+		CandidateId:  rf.Me,
 		LastLogIndex: lastLogIndex,
 		LastLogTerm:  rf.log[lastLogIndex].Term,
 	}
 	for i := 0; i < len(rf.peers); i++ {
-		if i == rf.me {
+		if i == rf.Me {
 			continue
 		}
 		// for each peer start a goroutine to send RequestVote
@@ -117,39 +117,39 @@ func (rf *Raft) startElection() {
 			//rf.mu.RLock()
 			//lastLogIndex := len(rf.log) - 1
 			//args := &RequestVoteArgs{
-			//	Term:         rf.currentTerm,
-			//	CandidateId:  rf.me,
+			//	Term:         rf.CurrentTerm,
+			//	CandidateId:  rf.Me,
 			//	LastLogIndex: lastLogIndex,
 			//	LastLogTerm:  rf.log[lastLogIndex].Term,
 			//}
 			//rf.mu.RUnlock()
 			reply := &RequestVoteReply{}
-			// state of sending
+			// State of sending
 			if rf.sendRequestVote(id, args, reply) {
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
 				// check whether term changed during election
-				if rf.currentTerm != args.Term {
-					DPrintf("[startElection| changed term] raft %d term changed | current term: %d | current state: %d\n",
-						rf.me, rf.currentTerm, rf.state)
+				if rf.CurrentTerm != args.Term {
+					DPrintf("[startElection| changed term] raft %d term changed | current term: %d | current State: %d\n",
+						rf.Me, rf.CurrentTerm, rf.State)
 					return
 				}
-				// check whether state changed during election
-				if rf.state != CANDIDATE {
-					DPrintf("[startElection| changed state] raft %d state changed | current term: %d | current state: %d\n",
-						rf.me, rf.currentTerm, rf.state)
+				// check whether State changed during election
+				if rf.State != CANDIDATE {
+					DPrintf("[startElection| changed State] raft %d State changed | current term: %d | current State: %d\n",
+						rf.Me, rf.CurrentTerm, rf.State)
 					return
 				}
 				// get vote from peer
 				if reply.VoteGranted == true {
 					voteCnt++
-					DPrintf("[startElection | reply true] raft %d get accept vote from %d | current term: %d | current state: %d | reply term: %d | voteCnt: %d\n",
-						rf.me, id, rf.currentTerm, rf.state, reply.Term, voteCnt)
+					DPrintf("[startElection | reply true] raft %d get accept vote from %d | current term: %d | current State: %d | reply term: %d | voteCnt: %d\n",
+						rf.Me, id, rf.CurrentTerm, rf.State, reply.Term, voteCnt)
 					// win the majority
-					if voteCnt > len(rf.peers)/2 && rf.state == CANDIDATE {
+					if voteCnt > len(rf.peers)/2 && rf.State == CANDIDATE {
 						rf.convertTo(LEADER)
-						DPrintf("[startElection | become leader] raft %d convert to leader | current term: %d | current state: %d\n",
-							rf.me, rf.currentTerm, rf.state)
+						DPrintf("[startElection | become leader] raft %d convert to leader | current term: %d | current State: %d\n",
+							rf.Me, rf.CurrentTerm, rf.State)
 						// reinitialize after election
 						for i := 0; i < len(rf.peers); i++ {
 							// initialized to leader last log index + 1
@@ -160,20 +160,20 @@ func (rf *Raft) startElection() {
 						rf.broadcastSignalChan <- true
 					}
 				} else {
-					DPrintf("[startElection | reply false] raft %d get reject vote from %d | current term: %d | current state: %d | reply term: %d | VoteCnt: %d\n",
-						rf.me, id, rf.currentTerm, rf.state, reply.Term, voteCnt)
+					DPrintf("[startElection | reply false] raft %d get reject vote from %d | current term: %d | current State: %d | reply term: %d | VoteCnt: %d\n",
+						rf.Me, id, rf.CurrentTerm, rf.State, reply.Term, voteCnt)
 					// get higher term, convert to follower and match the term
-					if rf.currentTerm < reply.Term {
+					if rf.CurrentTerm < reply.Term {
 						rf.convertTo(FOLLOWER)
-						rf.currentTerm = reply.Term
+						rf.CurrentTerm = reply.Term
 						rf.persist()
 					}
 				}
 			} else {
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
-				DPrintf("[startElection | no reply] raft %d RPC to %d failed | current term: %d | current state: %d | reply term: %d\n",
-					rf.me, id, rf.currentTerm, rf.state, reply.Term)
+				DPrintf("[startElection | no reply] raft %d RPC to %d failed | current term: %d | current State: %d | reply term: %d\n",
+					rf.Me, id, rf.CurrentTerm, rf.State, reply.Term)
 			}
 		}(i, args)
 	}
@@ -185,16 +185,16 @@ func (rf *Raft) broadcast() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	// if not leader anymore
-	if rf.state != LEADER {
-		DPrintf("[broadcast | not leader] raft %d lost leadership | current term: %d | current state: %d\n",
-			rf.me, rf.currentTerm, rf.state)
+	if rf.State != LEADER {
+		DPrintf("[broadcast | not leader] raft %d lost leadership | current term: %d | current State: %d\n",
+			rf.Me, rf.CurrentTerm, rf.State)
 		return
 	}
 	rf.broadcastTimerReset()
-	curTerm := rf.currentTerm
+	curTerm := rf.CurrentTerm
 
 	for i := 0; i < len(rf.peers); i++ {
-		if i == rf.me {
+		if i == rf.Me {
 			continue
 		}
 		// for each follower start a goroutine to broadcast heartbeat and appendEntries
@@ -202,7 +202,7 @@ func (rf *Raft) broadcast() {
 		RETRY:
 			rf.mu.Lock()
 			// check whether current server's term is changed
-			if curTerm != rf.currentTerm {
+			if curTerm != rf.CurrentTerm {
 				rf.mu.Unlock()
 				return
 			}
@@ -217,33 +217,33 @@ func (rf *Raft) broadcast() {
 			}
 			rf.mu.Unlock()
 			reply := &AppendEntriesReply{}
-			// state of broadcasting
+			// State of broadcasting
 			if rf.sendAppendEntries(id, args, reply) {
 				rf.mu.Lock()
-				// check state whether changed during broadcasting
-				if rf.state != LEADER {
-					DPrintf("[broadcast| changed state] raft %d lost leadership | current term: %d | current state: %d\n",
-						rf.me, rf.currentTerm, rf.state)
+				// check State whether changed during broadcasting
+				if rf.State != LEADER {
+					DPrintf("[broadcast| changed State] raft %d lost leadership | current term: %d | current State: %d\n",
+						rf.Me, rf.CurrentTerm, rf.State)
 					rf.mu.Unlock()
 					return
 				}
 				// whether the appendEntries are accepted
 				if reply.Success {
 					// update the matchIndex and nextIndex, check if the logEntry can be committed
-					DPrintf("[broadcast | reply true] raft %d broadcast to %d accepted | current term: %d | current state: %d\n",
-						rf.me, id, rf.currentTerm, rf.state)
+					DPrintf("[broadcast | reply true] raft %d broadcast to %d accepted | current term: %d | current State: %d\n",
+						rf.Me, id, rf.CurrentTerm, rf.State)
 					// index of the highest log entry known to be replicated
 					rf.matchIndex[id] = args.PrevLogIndex + len(args.Entries)
 					// index of the next log entry to send
 					rf.nextIndex[id] = rf.matchIndex[id] + 1
 					rf.checkN()
 				} else {
-					DPrintf("[broadcast | reply false] raft %d broadcast to %d rejected | current term: %d | current state: %d | reply term: %d\n",
-						rf.me, id, rf.currentTerm, rf.state, reply.Term)
+					DPrintf("[broadcast | reply false] raft %d broadcast to %d rejected | current term: %d | current State: %d | reply term: %d\n",
+						rf.Me, id, rf.CurrentTerm, rf.State, reply.Term)
 					// get higher term, convert to follower and match the term
-					if rf.currentTerm < reply.Term {
+					if rf.CurrentTerm < reply.Term {
 						rf.convertTo(FOLLOWER)
-						rf.currentTerm = reply.Term
+						rf.CurrentTerm = reply.Term
 						rf.persist()
 						rf.mu.Unlock()
 						return
@@ -255,7 +255,7 @@ func (rf *Raft) broadcast() {
 						rf.nextIndex[id] = reply.ConflictIndex
 					}
 					DPrintf("[appendEntriesAsync] raft %d append entries to %d rejected: decrement nextIndex and retry | nextIndex: %d\n",
-						rf.me, id, rf.nextIndex[id])
+						rf.Me, id, rf.nextIndex[id])
 					rf.mu.Unlock()
 					goto RETRY
 				}
@@ -264,8 +264,8 @@ func (rf *Raft) broadcast() {
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
 				// failed broadcasting
-				DPrintf("[broadcast | no reply] raft %d RPC to %d failed | current term: %d | current state: %d \n",
-					rf.me, id, rf.currentTerm, rf.state)
+				DPrintf("[broadcast | no reply] raft %d RPC to %d failed | current term: %d | current State: %d \n",
+					rf.Me, id, rf.CurrentTerm, rf.State)
 			}
 		}(i, curTerm)
 	}
@@ -273,11 +273,11 @@ func (rf *Raft) broadcast() {
 
 // check if the logEntry can be committed, call with lock, only leader can call while handling AppendEntries response
 func (rf *Raft) checkN() {
-	// if N > commitIndex, a majority of matchIndex[i] ≥ N, and log[N].term == currentTerm: set commitIndex = N
-	for N := len(rf.log) - 1; N > rf.commitIndex && rf.log[N].Term == rf.currentTerm; N-- {
+	// if N > commitIndex, a majority of matchIndex[i] ≥ N, and log[N].term == CurrentTerm: set commitIndex = N
+	for N := len(rf.log) - 1; N > rf.commitIndex && rf.log[N].Term == rf.CurrentTerm; N-- {
 		nReplicated := 0
 		for i := 0; i < len(rf.peers); i++ {
-			if rf.matchIndex[i] >= N && rf.log[N].Term == rf.currentTerm {
+			if rf.matchIndex[i] >= N && rf.log[N].Term == rf.CurrentTerm {
 				nReplicated += 1
 			}
 			// check the majority
@@ -291,30 +291,30 @@ func (rf *Raft) checkN() {
 	}
 }
 
-// GetState return currentTerm and whether this server believes it is the leader.
+// GetState return CurrentTerm and whether this server believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	term := rf.currentTerm
-	isLeader := rf.state == LEADER
+	term := rf.CurrentTerm
+	isLeader := rf.State == LEADER
 	return term, isLeader
 }
 
-// Save Raft's persistent state to stable storage,
+// Save Raft's persistent State to stable storage,
 func (rf *Raft) persist() {
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
-	e.Encode(rf.currentTerm)
+	e.Encode(rf.CurrentTerm)
 	e.Encode(rf.votedFor)
 	e.Encode(rf.log)
 	data := w.Bytes()
 	rf.persister.SaveRaftState(data)
-	DPrintf("[persist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n", rf.me, rf.currentTerm, rf.votedFor, len(rf.log))
+	DPrintf("[persist] raft: %d || CurrentTerm: %d || votedFor: %d || log len: %d\n", rf.Me, rf.CurrentTerm, rf.votedFor, len(rf.log))
 }
 
-// restore previously persisted state.
+// restore previously persisted State.
 func (rf *Raft) readPersist(data []byte) {
-	if data == nil || len(data) < 1 { // bootstrap without any state?
+	if data == nil || len(data) < 1 { // bootstrap without any State?
 		return
 	}
 	r := bytes.NewBuffer(data)
@@ -328,12 +328,12 @@ func (rf *Raft) readPersist(data []byte) {
 		d.Decode(&log) != nil {
 		DPrintf("[readPersist] error\n")
 	} else {
-		rf.currentTerm = currentTerm
+		rf.CurrentTerm = currentTerm
 		rf.votedFor = votedFor
 		rf.log = log
 	}
 
-	DPrintf("[readPersist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n", rf.me, rf.currentTerm, rf.votedFor, len(log))
+	DPrintf("[readPersist] raft: %d || CurrentTerm: %d || votedFor: %d || log len: %d\n", rf.Me, rf.CurrentTerm, rf.votedFor, len(log))
 }
 
 // A service wants to switch to snapshot.  Only do so if Raft hasn't
@@ -356,17 +356,17 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	// get high term, convert to follower and match the term
-	if args.Term > rf.currentTerm {
-		rf.currentTerm = args.Term
+	if args.Term > rf.CurrentTerm {
+		rf.CurrentTerm = args.Term
 		rf.convertTo(FOLLOWER)
 		rf.persist()
 	}
 	// do not grant vote due to smaller term or already voted for another one
-	if args.Term < rf.currentTerm || (rf.votedFor != -1 && rf.votedFor != args.CandidateId) {
-		reply.Term = rf.currentTerm
+	if args.Term < rf.CurrentTerm || (rf.votedFor != -1 && rf.votedFor != args.CandidateId) {
+		reply.Term = rf.CurrentTerm
 		reply.VoteGranted = false
-		DPrintf("[RequestVote] raft %d reject vote for %d | current term: %d | current state: %d | recieved term: %d | voteFor: %d\n",
-			rf.me, args.CandidateId, rf.currentTerm, rf.state, args.Term, rf.votedFor)
+		DPrintf("[RequestVote] raft %d reject vote for %d | current term: %d | current State: %d | recieved term: %d | voteFor: %d\n",
+			rf.Me, args.CandidateId, rf.CurrentTerm, rf.State, args.Term, rf.votedFor)
 		return
 	}
 	// not vote yet or already voted for it before
@@ -375,7 +375,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		lastLogIndex := len(rf.log) - 1
 		if rf.log[lastLogIndex].Term > args.LastLogTerm ||
 			(rf.log[lastLogIndex].Term == args.LastLogTerm && args.LastLogIndex < lastLogIndex) {
-			reply.Term = rf.currentTerm
+			reply.Term = rf.CurrentTerm
 			reply.VoteGranted = false
 			return
 		}
@@ -384,10 +384,10 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		// avoid two election proceeding in parallel
 		rf.electionTimerReset()
 		rf.persist()
-		reply.Term = rf.currentTerm
+		reply.Term = rf.CurrentTerm
 		reply.VoteGranted = true
-		DPrintf("[RequestVote] raft %d accept vote for %d | current term: %d | current state: %d | recieved term: %d\n",
-			rf.me, args.CandidateId, rf.currentTerm, rf.state, args.Term)
+		DPrintf("[RequestVote] raft %d accept vote for %d | current term: %d | current State: %d | recieved term: %d\n",
+			rf.Me, args.CandidateId, rf.CurrentTerm, rf.State, args.Term)
 	}
 }
 
@@ -408,47 +408,47 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 	// get lower term, refuse the AppendEntries and send back its term
-	if args.Term < rf.currentTerm {
-		reply.Term = rf.currentTerm
+	if args.Term < rf.CurrentTerm {
+		reply.Term = rf.CurrentTerm
 		reply.Success = false
-		DPrintf("[AppendEntries| small term] raft %d reject append entries | current term: %d | current state: %d | received term: %d\n",
-			rf.me, rf.currentTerm, rf.state, args.Term)
+		DPrintf("[AppendEntries| small term] raft %d reject append entries | current term: %d | current State: %d | received term: %d\n",
+			rf.Me, rf.CurrentTerm, rf.State, args.Term)
 		return
 	}
 
 	// do not change VoteFor except step down
-	if args.Term == rf.currentTerm {
-		if rf.state == CANDIDATE {
-			rf.state = FOLLOWER
+	if args.Term == rf.CurrentTerm {
+		if rf.State == CANDIDATE {
+			rf.State = FOLLOWER
 		}
 
 		rf.electionTimerReset()
 	}
 
 	// get higher term, convert to follower and match the term
-	if args.Term > rf.currentTerm {
+	if args.Term > rf.CurrentTerm {
 		rf.convertTo(FOLLOWER)
-		rf.currentTerm = args.Term
-		DPrintf("[AppendEntries| big term or has leader] raft %d update term or state | current term: %d | current state: %d | recieved term: %d\n",
-			rf.me, rf.currentTerm, rf.state, args.Term)
+		rf.CurrentTerm = args.Term
+		DPrintf("[AppendEntries| big term or has leader] raft %d update term or State | current term: %d | current State: %d | recieved term: %d\n",
+			rf.Me, rf.CurrentTerm, rf.State, args.Term)
 	}
 
 	rf.persist()
 
 	//// get higher term, convert to follower and match the term
-	//if args.Term >= rf.currentTerm {
+	//if args.Term >= rf.CurrentTerm {
 	//	rf.convertTo(FOLLOWER)
-	//	rf.currentTerm = args.Term
+	//	rf.CurrentTerm = args.Term
 	//	rf.persist()
-	//	DPrintf("[AppendEntries| big term or has leader] raft %d update term or state | current term: %d | current state: %d | recieved term: %d\n",
-	//		rf.me, rf.currentTerm, rf.state, args.Term)
+	//	DPrintf("[AppendEntries| big term or has leader] raft %d update term or State | current term: %d | current State: %d | recieved term: %d\n",
+	//		rf.Me, rf.CurrentTerm, rf.State, args.Term)
 	//}
 
 	//smaller length or unmatched term at PrevLogIndex
 	if len(rf.log) <= args.PrevLogIndex || rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
 		DPrintf("[AppendEntries| inconsistent log] raft %d reject append entry | log len: %d | args.PrevLogIndex: %d | args.prevLogTerm %d\n",
-			rf.me, len(rf.log), args.PrevLogIndex, args.PrevLogTerm)
-		reply.Term = rf.currentTerm
+			rf.Me, len(rf.log), args.PrevLogIndex, args.PrevLogTerm)
+		reply.Term = rf.CurrentTerm
 		reply.Success = false
 		if len(rf.log) <= args.PrevLogIndex {
 			reply.ConflictIndex = len(rf.log)
@@ -485,7 +485,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			rf.log = append(rf.log[:nextIndex+conflictIndex], newEntries...)
 			//rf.log = newLog
 			rf.persist()
-			DPrintf("[AppendEntries] raft %d appended entries from leader | log length: %d\n", rf.me, len(rf.log))
+			DPrintf("[AppendEntries] raft %d appended entries from leader | log length: %d\n", rf.Me, len(rf.log))
 		}
 		lastNewEntryIndex := args.PrevLogIndex + entLen
 		if args.LeaderCommit > rf.commitIndex {
@@ -493,7 +493,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			// apply entries after update commitIndex
 			rf.applyCond.Broadcast()
 		}
-		reply.Term = rf.currentTerm
+		reply.Term = rf.CurrentTerm
 		reply.Success = true
 	}
 }
@@ -502,7 +502,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 //func (rf *Raft) applyEntries() {
 //	rf.mu.Lock()
 //	defer rf.mu.Unlock()
-//	// if commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to state machine
+//	// if commitIndex > lastApplied: increment lastApplied, apply log[lastApplied] to State machine
 //	for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
 //		applyMsg := ApplyMsg{
 //			CommandValid: true,
@@ -512,7 +512,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 //		rf.applyCh <- applyMsg
 //		rf.lastApplied += 1
 //		DPrintf("[applyEntries] raft %d applied entry | lastApplied: %d | commitIndex: %d\n",
-//			rf.me, rf.lastApplied, rf.commitIndex)
+//			rf.Me, rf.lastApplied, rf.commitIndex)
 //	}
 //}
 
@@ -523,7 +523,7 @@ func (rf *Raft) applyEntries() {
 		commitIndex := rf.commitIndex
 		lastApplied := rf.lastApplied
 		DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tlastApplied %d and commitIndex %d\n",
-			rf.me, rf.currentTerm, rf.state, lastApplied, commitIndex)
+			rf.Me, rf.CurrentTerm, rf.State, lastApplied, commitIndex)
 		rf.mu.Unlock()
 
 		if lastApplied == commitIndex {
@@ -540,7 +540,7 @@ func (rf *Raft) applyEntries() {
 				}
 				rf.lastApplied = i
 				DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tapply command %v of index %d and term %d to applyCh\n",
-					rf.me, rf.currentTerm, rf.state, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
+					rf.Me, rf.CurrentTerm, rf.State, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
 				rf.mu.Unlock()
 				rf.applyCh <- applyMsg
 			}
@@ -550,22 +550,22 @@ func (rf *Raft) applyEntries() {
 
 // State conversion, should be within writeLock
 func (rf *Raft) convertTo(state int) {
-	oldState := rf.state
+	oldState := rf.State
 	newState := state
 	switch state {
 	case FOLLOWER:
 		rf.electionTimerReset()
 		rf.votedFor = -1
-		rf.state = FOLLOWER
+		rf.State = FOLLOWER
 	case CANDIDATE:
 		rf.electionTimerReset()
-		rf.currentTerm++
-		rf.votedFor = rf.me
-		rf.state = CANDIDATE
+		rf.CurrentTerm++
+		rf.votedFor = rf.Me
+		rf.State = CANDIDATE
 	case LEADER:
 		// broadcast includes heartbeat and appendEntries
 		rf.broadcastTimerReset()
-		rf.state = LEADER
+		rf.State = LEADER
 	}
 
 	// send signal to awake timer
@@ -584,12 +584,12 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	isLeader := true
 	if term, isLeader = rf.GetState(); isLeader {
 		rf.mu.Lock()
-		rf.log = append(rf.log, LogEntry{Command: command, Term: rf.currentTerm})
+		rf.log = append(rf.log, LogEntry{Command: command, Term: rf.CurrentTerm})
 		rf.persist()
-		rf.matchIndex[rf.me] = len(rf.log) - 1
+		rf.matchIndex[rf.Me] = len(rf.log) - 1
 		index = len(rf.log) - 1
-		DPrintf("[Start] raft %d replicate command %v to log | current term: %d | current state: %d | log length: %d\n",
-			rf.me, command, rf.currentTerm, rf.state, len(rf.log))
+		DPrintf("[Start] raft %d replicate command %v to log | current term: %d | current State: %d | log length: %d\n",
+			rf.Me, command, rf.CurrentTerm, rf.State, len(rf.log))
 		rf.mu.Unlock()
 	}
 	return index, term, isLeader
@@ -612,10 +612,10 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
-	rf.me = me
+	rf.Me = me
 
-	rf.state = FOLLOWER
-	rf.currentTerm = 0
+	rf.State = FOLLOWER
+	rf.CurrentTerm = 0
 	rf.votedFor = -1
 
 	rf.broadcastSignalChan = make(chan bool)
@@ -634,7 +634,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.nonLeaderCond = sync.NewCond(&rf.mu)
 	rf.leaderCond = sync.NewCond(&rf.mu)
 
-	// bootstrap from a persisted state
+	// bootstrap from a persisted State
 	rf.readPersist(persister.ReadRaftState())
 
 	DPrintf("Starting raft %d\n", me)

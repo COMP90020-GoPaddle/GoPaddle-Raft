@@ -6,26 +6,26 @@ import (
 )
 
 type Raft struct {
-	mu        sync.Mutex          // Lock to protect shared access to this peer's state
+	mu        sync.Mutex          // Lock to protect shared access to this peer's State
 	peers     []*labrpc.ClientEnd // RPC end points of all peers
-	persister *Persister          // Object to hold this peer's persisted state
-	me        int                 // this peer's index into peers[]
+	persister *Persister          // Object to hold this peer's persisted State
+	Me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
 
 	applyCh chan ApplyMsg // channel to send commit
 
-	// Persistent state on all servers
-	currentTerm int
+	// Persistent State on all servers
+	CurrentTerm int
 	votedFor    int
 	log         []LogEntry
-	state       int
+	State       int
 	leaderId    int
 
-	// Volatile state on all servers
+	// Volatile State on all servers
 	commitIndex int
 	lastApplied int
 
-	// Volatile state on leaders
+	// Volatile State on leaders
 	nextIndex  []int // for each server, index of the next log entry to send to that server
 	matchIndex []int // for each server, index of highest log entry known to be replicated on server
 
@@ -82,7 +82,7 @@ type AppendEntriesArgs struct {
 }
 
 type AppendEntriesReply struct {
-	Term          int // currentTerm, for leader to update itself
+	Term          int // CurrentTerm, for leader to update itself
 	Success       bool
 	ConflictIndex int
 }

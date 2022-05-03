@@ -46,7 +46,7 @@ func (cfg *Config) All() []int {
 }
 
 // attach server i to servers listed in to
-// caller must hold cfg.mu
+// caller must hold Cfg.mu
 func (cfg *Config) connectUnlocked(i int, to []int) {
 	// log.Printf("connect peer %d to %v\n", i, to)
 
@@ -74,7 +74,7 @@ func random_handles(kvh []*labrpc.ClientEnd) []*labrpc.ClientEnd {
 	return sa
 }
 
-// caller should hold cfg.mu
+// caller should hold Cfg.mu
 func (cfg *Config) ConnectClientUnlocked(ck *kvraft.Clerk, to []int) {
 	// log.Printf("ConnectClient %v to %v\n", ck, to)
 	endnames := cfg.clerks[ck]
@@ -152,9 +152,9 @@ type Config struct {
 	maxraftstate int
 	start        time.Time // time at which make_config() was called
 	// begin()/end() statistics
-	t0    time.Time // time at which test_test.go called cfg.begin()
+	t0    time.Time // time at which test_test.go called Cfg.begin()
 	rpcs0 int       // rpcTotal() at start of test
-	ops   int32     // number of clerk get/put/append method calls
+	ops   int32     // number of Clerk get/put/append method calls
 }
 
 var ncpu_once sync.Once
@@ -183,7 +183,7 @@ func make_config(n int, unreliable bool, maxraftstate int) *Config {
 		cfg.StartServer(i)
 	}
 
-	//.Printf("Servers: %v\n", cfg.Kvservers)
+	//.Printf("Servers: %v\n", Cfg.Kvservers)
 
 	cfg.ConnectAll()
 
@@ -230,7 +230,7 @@ func (cfg *Config) StartServer(i int) {
 	cfg.net.AddServer(i, srv)
 }
 
-// Create a clerk with clerk specific server names.
+// Create a Clerk with Clerk specific server names.
 // Give it connections to all of the servers, but for
 // now enable only connections to servers in to[].
 func (cfg *Config) MakeClient(to []int) *kvraft.Clerk {
@@ -253,4 +253,19 @@ func (cfg *Config) MakeClient(to []int) *kvraft.Clerk {
 	cfg.nextClientId++
 	cfg.ConnectClientUnlocked(ck, to)
 	return ck
+}
+
+// Sets up 2 partitions with connectivity between servers in each  partition.
+func (cfg *Config) partition(p1 []int, p2 []int) {
+	cfg.mu.Lock()
+	defer cfg.mu.Unlock()
+	// log.Printf("partition servers into: %v %v\n", p1, p2)
+	for i := 0; i < len(p1); i++ {
+		cfg.disconnectUnlocked(p1[i], p2)
+		cfg.connectUnlocked(p1[i], p1)
+	}
+	for i := 0; i < len(p2); i++ {
+		cfg.disconnectUnlocked(p2[i], p1)
+		cfg.connectUnlocked(p2[i], p2)
+	}
 }
