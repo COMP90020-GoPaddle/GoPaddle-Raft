@@ -111,12 +111,12 @@ func (cfg *Config) ShutdownServer(i int) {
 		cfg.saved[i] = cfg.saved[i].Copy()
 	}
 
-	kv := cfg.Kvservers[i]
+	kv := cfg.kvservers[i]
 	if kv != nil {
 		cfg.mu.Unlock()
 		kv.Kill()
 		cfg.mu.Lock()
-		cfg.Kvservers[i] = nil
+		cfg.kvservers[i] = nil
 	}
 }
 
@@ -144,13 +144,13 @@ type Config struct {
 	mu           sync.Mutex
 	net          *labrpc.Network
 	n            int
-	Kvservers    []*kvraft.KVServer
+	kvservers    []*KVServer
 	saved        []*raft.Persister
 	endnames     [][]string // names of each server's sending ClientEnds
 	clerks       map[*kvraft.Clerk][]string
 	nextClientId int
 	maxraftstate int
-	start        time.Time // time at which Make_config() was called
+	start        time.Time // time at which make_config() was called
 	// begin()/end() statistics
 	t0    time.Time // time at which test_test.go called cfg.begin()
 	rpcs0 int       // rpcTotal() at start of test
@@ -159,7 +159,7 @@ type Config struct {
 
 var ncpu_once sync.Once
 
-func Make_config(n int, unreliable bool, maxraftstate int) *Config {
+func make_config(n int, unreliable bool, maxraftstate int) *Config {
 	ncpu_once.Do(func() {
 		if runtime.NumCPU() < 2 {
 			fmt.Printf("warning: only one CPU, which may conceal locking bugs\n")
@@ -170,7 +170,7 @@ func Make_config(n int, unreliable bool, maxraftstate int) *Config {
 	cfg := &Config{}
 	cfg.net = labrpc.MakeNetwork()
 	cfg.n = n
-	cfg.Kvservers = make([]*kvraft.KVServer, cfg.n)
+	cfg.kvservers = make([]*KVServer, cfg.n)
 	cfg.saved = make([]*raft.Persister, cfg.n)
 	cfg.endnames = make([][]string, cfg.n)
 	cfg.clerks = make(map[*kvraft.Clerk][]string)
@@ -220,10 +220,10 @@ func (cfg *Config) StartServer(i int) {
 	}
 	cfg.mu.Unlock()
 
-	cfg.Kvservers[i] = kvraft.StartKVServer(ends, i, cfg.saved[i], cfg.maxraftstate)
+	cfg.kvservers[i] = StartKVServer(ends, i, cfg.saved[i], cfg.maxraftstate)
 
-	kvsvc := labrpc.MakeService(cfg.Kvservers[i])
-	rfsvc := labrpc.MakeService(cfg.Kvservers[i].Rf)
+	kvsvc := labrpc.MakeService(cfg.kvservers[i])
+	rfsvc := labrpc.MakeService(cfg.kvservers[i].rf)
 	srv := labrpc.MakeServer()
 	srv.AddService(kvsvc)
 	srv.AddService(rfsvc)
