@@ -82,6 +82,9 @@ func main() {
 	manager := &application.Manager{}
 	manager.StartSevers(num, true)
 	manager.ShowServerInfo()
+
+	client := manager.StartClient()
+
 	//cfg := application.Make_config(num, true, -1)
 	//showServerInfo(cfg)
 	//opLog := &OpLog{}
@@ -90,20 +93,20 @@ func main() {
 	for operation != "exit" {
 		fmt.Println("Enter your command: ")
 		fmt.Scanln(&operation)
-		//var key, value string
-		//if operation == "put" {
-		//	fmt.Println("Enter key: ")
-		//	fmt.Scanln(&key)
-		//	fmt.Println("Enter value: ")
-		//	fmt.Scanln(&value)
-		//	Put(cfg, ck, key, value, opLog, 1)
-		//}
-		//if operation == "get" {
-		//	fmt.Println("Enter key: ")
-		//	fmt.Scanln(&key)
-		//	v := Get(cfg, ck, key, opLog, 1)
-		//	fmt.Printf("Value is: %v\n", v)
-		//}
+		var key, value string
+		if operation == "put" {
+			fmt.Println("Enter key: ")
+			fmt.Scanln(&key)
+			fmt.Println("Enter value: ")
+			fmt.Scanln(&value)
+			client.Put(manager.Cfg, key, value)
+		}
+		if operation == "get" {
+			fmt.Println("Enter key: ")
+			fmt.Scanln(&key)
+			client.Get(manager.Cfg, key)
+			fmt.Println("Client log:", client.Log)
+		}
 		//if operation == "show" {
 		//	fmt.Println("Database: ")
 		//	for _, server := range cfg.Kvservers {

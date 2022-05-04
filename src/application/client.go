@@ -71,7 +71,7 @@ func (ck *Clerk) Get(key string) string {
 			} else if reply.Err == ErrNoKey {
 				DPrintf("Get Success, but key not found")
 				ck.lastRequestId = updatedRequestId
-				return ""
+				return "Key no found"
 			}
 		}
 		// Fail -> leaderId + 1 and retry

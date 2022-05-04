@@ -61,8 +61,8 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 		ClientId:  args.ClientId,
 		RequestId: args.RequestId,
 	}
-	DPrintf("Clinet[%v] wants to Get %v from %v", args.ClientId, args.Key, kv.me)
-	fmt.Printf("Clinet[%v] wants to Get %v from %v\n", args.ClientId, args.Key, kv.me)
+	DPrintf("Client[%v] wants to Get %v from %v", args.ClientId, args.Key, kv.me)
+	fmt.Printf("Client[%v] wants to Get %v from %v\n", args.ClientId, args.Key, kv.me)
 
 	// Return True -> Get request fails
 	if kv.waitRaft(operation) {
@@ -207,7 +207,7 @@ func (kv *KVServer) Listener() {
 		}
 		DPrintf("ApplyMsg[%v] Operation: %v, Database: %v", applyMsg, operation, kv.kvStore[operation.Key])
 		//fmt.Printf("ApplyMsg[%v] Operation: %v, Database: %v\n", applyMsg, operation, kv.kvStore[operation.Key])
-		fmt.Printf("ApplyMsg: %v, Operation: %v\n", applyMsg.Command, operation.Value)
+		//fmt.Printf("ApplyMsg: %v, Operation: %v\n", applyMsg.Command.(Op), operation)
 		DPrintf("Client[%v]: RequestId: %v", operation.ClientId, operation.RequestId)
 
 		// Update requestId

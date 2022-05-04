@@ -1,7 +1,6 @@
 package application
 
 import (
-	"GoPaddle-Raft/kvraft"
 	"GoPaddle-Raft/labrpc"
 	"GoPaddle-Raft/raft"
 	crand "crypto/rand"
@@ -9,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -75,7 +75,7 @@ func random_handles(kvh []*labrpc.ClientEnd) []*labrpc.ClientEnd {
 }
 
 // caller should hold Cfg.mu
-func (cfg *Config) ConnectClientUnlocked(ck *kvraft.Clerk, to []int) {
+func (cfg *Config) ConnectClientUnlocked(ck *Clerk, to []int) {
 	// log.Printf("ConnectClient %v to %v\n", ck, to)
 	endnames := cfg.clerks[ck]
 	for j := 0; j < len(to); j++ {
@@ -140,6 +140,10 @@ func (cfg *Config) disconnectUnlocked(i int, from []int) {
 	}
 }
 
+func (cfg *Config) op() {
+	atomic.AddInt32(&cfg.ops, 1)
+}
+
 type Config struct {
 	mu           sync.Mutex
 	net          *labrpc.Network
@@ -147,7 +151,7 @@ type Config struct {
 	kvservers    []*KVServer
 	saved        []*raft.Persister
 	endnames     [][]string // names of each server's sending ClientEnds
-	clerks       map[*kvraft.Clerk][]string
+	clerks       map[*Clerk][]string
 	nextClientId int
 	maxraftstate int
 	start        time.Time // time at which make_config() was called
@@ -173,7 +177,7 @@ func make_config(n int, unreliable bool, maxraftstate int) *Config {
 	cfg.kvservers = make([]*KVServer, cfg.n)
 	cfg.saved = make([]*raft.Persister, cfg.n)
 	cfg.endnames = make([][]string, cfg.n)
-	cfg.clerks = make(map[*kvraft.Clerk][]string)
+	cfg.clerks = make(map[*Clerk][]string)
 	cfg.nextClientId = cfg.n + 1000 // client ids start 1000 above the highest serverid
 	cfg.maxraftstate = maxraftstate
 	cfg.start = time.Now()
@@ -233,7 +237,7 @@ func (cfg *Config) StartServer(i int) {
 // Create a Clerk with Clerk specific server names.
 // Give it connections to all of the servers, but for
 // now enable only connections to servers in to[].
-func (cfg *Config) MakeClient(to []int) *kvraft.Clerk {
+func (cfg *Config) makeClient(to []int) *Clerk {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 
@@ -248,11 +252,33 @@ func (cfg *Config) MakeClient(to []int) *kvraft.Clerk {
 	//fmt.Printf("Client ends: %v\n", ends)
 	//fmt.Printf("endnames: %v\n", endnames)
 
-	ck := kvraft.MakeClerk(random_handles(ends))
+	ck := MakeClerk(random_handles(ends))
 	cfg.clerks[ck] = endnames
 	cfg.nextClientId++
 	cfg.ConnectClientUnlocked(ck, to)
 	return ck
+}
+
+func (cfg *Config) deleteClient(ck *Clerk) {
+	cfg.mu.Lock()
+	defer cfg.mu.Unlock()
+
+	v := cfg.clerks[ck]
+	for i := 0; i < len(v); i++ {
+		os.Remove(v[i])
+	}
+	delete(cfg.clerks, ck)
+}
+
+func (cfg *Config) cleanup() {
+	cfg.mu.Lock()
+	defer cfg.mu.Unlock()
+	for i := 0; i < len(cfg.kvservers); i++ {
+		if cfg.kvservers[i] != nil {
+			cfg.kvservers[i].Kill()
+		}
+	}
+	cfg.net.Cleanup()
 }
 
 // Sets up 2 partitions with connectivity between servers in each  partition.
