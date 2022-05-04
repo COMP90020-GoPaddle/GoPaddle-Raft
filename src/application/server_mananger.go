@@ -1,30 +1,24 @@
 package application
 
 import (
-	"GoPaddle-Raft/kvraft"
-	"GoPaddle-Raft/porcupine"
 	"GoPaddle-Raft/raft"
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 )
 
-type OpLog struct {
-	operations []porcupine.Operation
-	sync.Mutex
-}
-
 type Manager struct {
-	Cfg   *Config
-	OpLog *OpLog
-	Clerk *kvraft.Clerk
+	Cfg *Config
 }
 
 func (manager *Manager) StartSevers(num int, unreliable bool) {
 	// create config
-	manager.Cfg = make_config(num, unreliable, -1)
+	manager.Cfg = Make_config(num, unreliable, -1)
 	// initialize an empty operation log
-	manager.OpLog = &OpLog{}
+	//manager.OpLog = &OpLog{}
+	// initialize a Clerk with Clerk specific server names.
+	//manager.Clerk = manager.Cfg.makeClient(manager.Cfg.All())
 }
 
 func (manager *Manager) ShutDown(serverID int) {
@@ -80,11 +74,11 @@ func (manager *Manager) ShowServerInfo() {
 		if server != nil {
 			raftState := server.Rf
 			fmt.Printf("Server[%v]: State [%v], Current Term [%v]\n", raftState.Me, raftState.State, raftState.CurrentTerm)
-			fmt.Println("Log:")
-			for _, log := range manager.OpLog.operations {
-				fmt.Printf("%v; ", log)
-				fmt.Println()
-			}
+			//fmt.Println("Log:")
+			//for _, log := range manager.OpLog.operations {
+			//	fmt.Printf("%v; ", log)
+			//	fmt.Println()
+			//}
 			fmt.Println("---------------")
 		} else {
 			// action when the server is shutdown
@@ -96,15 +90,125 @@ func (manager *Manager) ShowServerInfo() {
 func (manager *Manager) ShowSingleServer(rf *raft.Raft) {
 	fmt.Printf("Server[%v]: State [%v], voteFor [%v] Current Term [%v]\n", rf.Me, rf.State, rf.VotedFor, rf.CurrentTerm)
 	fmt.Println("Log:")
-	for _, log := range manager.OpLog.operations {
-		fmt.Printf("%v; ", log)
-		fmt.Println()
-	}
+	//for _, log := range manager.OpLog.operations {
+	//	fmt.Printf("%v; ", log)
+	//	fmt.Println()
+	//}
 	fmt.Println("---------------")
 
 }
 
 func (manager *Manager) GetAllServers() []*KVServer {
 	return manager.Cfg.Kvservers
+}
 
+/** Client APIs **/
+
+// OpLog use by recoding client's operation
+type OpLog struct {
+	operations []Operation
+	sync.Mutex
+}
+
+type Operation struct {
+	ClientId int64
+	Input    interface{}
+	Call     time.Time // invocation time
+	Output   interface{}
+	Return   time.Time // response time
+}
+
+type KvInput struct {
+	Op    uint8 // 0 => get, 1 => put, 2 => append
+	Key   string
+	Value string
+}
+
+type KvOutput struct {
+	Value string
+}
+
+func (log *OpLog) Append(op Operation) {
+	log.Lock()
+	defer log.Unlock()
+	log.operations = append(log.operations, op)
+}
+
+func (log *OpLog) Read() []Operation {
+	log.Lock()
+	defer log.Unlock()
+	ops := make([]Operation, len(log.operations))
+	copy(ops, log.operations)
+	return ops
+}
+
+// Client Each client's GUI hold one and use it to interact with servers
+type Client struct {
+	ck  *Clerk
+	Log *OpLog
+}
+
+// Call by connect button
+func (manager *Manager) StartClient() *Client {
+	client := &Client{}
+	ck := manager.Cfg.MakeClient(manager.Cfg.All())
+	opLog := &OpLog{}
+	client.ck = ck
+	client.Log = opLog
+	return client
+}
+
+// Call by close client's GUI
+// after calling, drop the client's pointer?
+func (manager *Manager) CloseClient(client *Client) {
+	manager.Cfg.deleteClient(client.ck)
+}
+
+func (client *Client) Get(cfg *Config, key string) string {
+	start := time.Now()
+	v := client.ck.Get(key)
+	end := time.Now()
+	cfg.op()
+	if client.Log != nil {
+		client.Log.Append(Operation{
+			Input:    KvInput{Op: 0, Key: key},
+			Output:   KvOutput{Value: v},
+			Call:     start,
+			Return:   end,
+			ClientId: client.ck.clientId,
+		})
+	}
+	return v
+}
+
+func (client *Client) Put(cfg *Config, key string, value string) {
+	start := time.Now()
+	client.ck.Put(key, value)
+	end := time.Now()
+	cfg.op()
+	if client.Log != nil {
+		client.Log.Append(Operation{
+			Input:    KvInput{Op: 1, Key: key, Value: value},
+			Output:   KvOutput{},
+			Call:     start,
+			Return:   end,
+			ClientId: client.ck.clientId,
+		})
+	}
+}
+
+func (client *Client) Append(cfg *Config, key string, value string) {
+	start := time.Now()
+	client.ck.Append(key, value)
+	end := time.Now()
+	cfg.op()
+	if client.Log != nil {
+		client.Log.Append(Operation{
+			Input:    KvInput{Op: 2, Key: key, Value: value},
+			Output:   KvOutput{},
+			Call:     start,
+			Return:   end,
+			ClientId: client.ck.clientId,
+		})
+	}
 }

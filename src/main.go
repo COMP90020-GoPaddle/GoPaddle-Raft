@@ -2,8 +2,6 @@ package main
 
 import (
 	"GoPaddle-Raft/application"
-	"GoPaddle-Raft/kvraft"
-	"GoPaddle-Raft/models"
 	"GoPaddle-Raft/porcupine"
 	"fmt"
 	"strconv"
@@ -23,42 +21,6 @@ type OpLog struct {
 }
 
 var t0 = time.Now()
-
-func Put(cfg *application.Config, ck *kvraft.Clerk, key string, value string, log *OpLog, cli int) {
-	start := int64(time.Since(t0))
-	ck.Put(key, value)
-	end := int64(time.Since(t0))
-	cfg.Op()
-	if log != nil {
-		log.Append(porcupine.Operation{
-			Input:    models.KvInput{Op: 1, Key: key, Value: value},
-			Output:   models.KvOutput{},
-			Call:     start,
-			Return:   end,
-			ClientId: cli,
-		})
-
-	}
-}
-
-// get/put/putappend that keep counts
-func Get(cfg *application.Config, ck *kvraft.Clerk, key string, log *OpLog, cli int) string {
-	start := int64(time.Since(t0))
-	v := ck.Get(key)
-	end := int64(time.Since(t0))
-	cfg.Op()
-	if log != nil {
-		log.Append(porcupine.Operation{
-			Input:    models.KvInput{Op: 0, Key: key},
-			Output:   models.KvOutput{Value: v},
-			Call:     start,
-			Return:   end,
-			ClientId: cli,
-		})
-	}
-
-	return v
-}
 
 //func showServerInfo(cfg *application.Config) {
 //	for _, server := range cfg.Kvservers {
@@ -82,6 +44,9 @@ func main() {
 	manager := &application.Manager{}
 	manager.StartSevers(num, true)
 	manager.ShowServerInfo()
+
+	client := manager.StartClient()
+
 	//cfg := application.Make_config(num, true, -1)
 	//showServerInfo(cfg)
 	//opLog := &OpLog{}
@@ -90,20 +55,20 @@ func main() {
 	for operation != "exit" {
 		fmt.Println("Enter your command: ")
 		fmt.Scanln(&operation)
-		//var key, value string
-		//if operation == "put" {
-		//	fmt.Println("Enter key: ")
-		//	fmt.Scanln(&key)
-		//	fmt.Println("Enter value: ")
-		//	fmt.Scanln(&value)
-		//	Put(cfg, ck, key, value, opLog, 1)
-		//}
-		//if operation == "get" {
-		//	fmt.Println("Enter key: ")
-		//	fmt.Scanln(&key)
-		//	v := Get(cfg, ck, key, opLog, 1)
-		//	fmt.Printf("Value is: %v\n", v)
-		//}
+		var key, value string
+		if operation == "put" {
+			fmt.Println("Enter key: ")
+			fmt.Scanln(&key)
+			fmt.Println("Enter value: ")
+			fmt.Scanln(&value)
+			client.Put(manager.Cfg, key, value)
+		}
+		if operation == "get" {
+			fmt.Println("Enter key: ")
+			fmt.Scanln(&key)
+			client.Get(manager.Cfg, key)
+			fmt.Println("Client log:", client.Log)
+		}
 		//if operation == "show" {
 		//	fmt.Println("Database: ")
 		//	for _, server := range cfg.Kvservers {
