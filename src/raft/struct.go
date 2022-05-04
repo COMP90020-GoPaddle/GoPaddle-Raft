@@ -5,14 +5,6 @@ import (
 	"sync"
 )
 
-type RaftState int
-
-const (
-	Follower  RaftState = 0
-	Candidate           = 1
-	Leader              = 2
-)
-
 type Raft struct {
 	mu        sync.Mutex          // Lock to protect shared access to this peer's State
 	peers     []*labrpc.ClientEnd // RPC end points of all peers
@@ -26,7 +18,7 @@ type Raft struct {
 	CurrentTerm int
 	VotedFor    int
 	log         []LogEntry
-	State       RaftState
+	State       int
 	leaderId    int
 
 	// Volatile State on all servers
@@ -51,6 +43,9 @@ type Raft struct {
 
 	// Apply signal for new committed entry when updating the CommitIndex
 	applyCond *sync.Cond
+
+	// Relevant server info in a string list
+	ServerInfo []string
 }
 
 type LogEntry struct {

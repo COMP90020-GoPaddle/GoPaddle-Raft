@@ -5,6 +5,7 @@ import (
 	"GoPaddle-Raft/labrpc"
 	"bytes"
 	"math/rand"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -422,6 +423,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			rf.State = FOLLOWER
 		}
 
+		// update serverInfo when any variable changes
+		rf.updateServerInfo()
+
 		rf.electionTimerReset()
 	}
 
@@ -568,6 +572,9 @@ func (rf *Raft) convertTo(state int) {
 		rf.State = LEADER
 	}
 
+	// update serverInfo when any variable changes
+	rf.updateServerInfo()
+
 	// send signal to awake timer
 	if oldState == LEADER && newState == FOLLOWER {
 		rf.nonLeaderCond.Broadcast()
@@ -630,6 +637,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.LastApplied = 0
 	rf.applyCh = applyCh
 
+	rf.ServerInfo = make([]string, 5)
+	rf.updateServerInfo()
+
 	rf.applyCond = sync.NewCond(&rf.mu)
 	rf.nonLeaderCond = sync.NewCond(&rf.mu)
 	rf.leaderCond = sync.NewCond(&rf.mu)
@@ -648,4 +658,23 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	go rf.applyEntries()
 
 	return rf
+}
+
+func (rf *Raft) updateServerInfo() {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	switch rf.State {
+	case 0:
+		rf.ServerInfo[0] = "Follower"
+	case 1:
+		rf.ServerInfo[0] = "Candidate"
+	case 2:
+		rf.ServerInfo[0] = "Leader"
+	}
+	rf.ServerInfo[1] = strconv.Itoa(rf.VotedFor)
+	rf.ServerInfo[2] = strconv.Itoa(rf.CurrentTerm)
+	rf.ServerInfo[3] = strconv.Itoa(rf.CommitIndex)
+	rf.ServerInfo[4] = strconv.Itoa(rf.LastApplied)
+
 }
