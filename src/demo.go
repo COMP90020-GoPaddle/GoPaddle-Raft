@@ -43,6 +43,7 @@ func (cB *clientBox) Layout(objects []fyne.CanvasObject, containerSize fyne.Size
 
 func main() {
 	a := app.New()
+	manager := &application.Manager{}
 	w := a.NewWindow("GoPaddle's Application")
 	w.Resize(fyne.NewSize(1440, 800))
 	w.SetFixedSize(true)
@@ -170,8 +171,12 @@ func main() {
 
 	partitionBtn := widget.NewButton("Make Partition", func() {
 		if btnArray[2].Text == "Make Partition" {
+			// Server API: make partition
+			manager.MakePartition()
 			btnArray[2].SetText("Reconnect All")
 		} else {
+			// Server API: reconnect All
+			manager.ReconnectAll()
 			btnArray[2].SetText("Make Partition")
 		}
 	})
@@ -197,33 +202,39 @@ func main() {
 		}
 		num, _ := strconv.Atoi(selectNum.Selected)
 		// create raft server here and store it into corresponding index
+
+		// Server API: startServers
+		manager.StartSevers(num, true)
+
 		serverArray = make([]string, num+1)
 		btn1Array := make([]*widget.Button, num+1)
 		btn2Array := make([]*widget.Button, num+1)
+
 		//unchanged
 		labels := []string{"State", "currentTerm", "votedFor", "commitIndex", "lastApplied"}
 		values := make([]binding.ExternalStringList, num+1)
 
 		// test part
-		cfg := application.Make_config(num, !reliable.Checked, -1)
-		fmt.Println(cfg)
-		go func(cfg *application.Config) {
-			ck := cfg.MakeClient(cfg.All())
-			for i := 1; i < 100; i++ {
-				time.Sleep(10 * time.Second)
-				servers := cfg.ShowServerInfo()
-				fmt.Println(servers[0].ShowDB())
-				ck.Put(fmt.Sprint(i), "put operation")
-			}
-		}(cfg)
+		//cfg := application.Make_config(num, !reliable.Checked, -1)
+		//fmt.Println(cfg)
+		//go func(cfg *application.Config) {
+		//	ck := cfg.MakeClient(cfg.All())
+		//	for i := 1; i < 100; i++ {
+		//		time.Sleep(10 * time.Second)
+		//		servers := cfg.ShowServerInfo()
+		//		fmt.Println(servers[0].ShowDB())
+		//		ck.Put(fmt.Sprint(i), "put operation")
+		//	}
+		//}(cfg)
 
 		for i := 1; i <= num; i++ {
 			index := i
 			// bind each widget to its raft server
 			serverArray[index] = "raft server" + strconv.Itoa(index)
-			values[index] = binding.BindStringList(
-				&[]string{"Item 1", "Item 2", "Item 3", "Item 4", "Item 5"},
-			)
+
+			// Server API: since index start from 1, so for kvservers: index-1
+			values[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
+
 			text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
 			text1.TextSize = 20
 			text1.Alignment = fyne.TextAlignCenter
@@ -273,11 +284,16 @@ func main() {
 			applyScroll := container.NewScroll(applies)
 			applyScroll.Resize(fyne.NewSize(200, 80))
 			applyScroll.ScrollToBottom()
+
 			btn1 := widget.NewButton("Disconnect", func() {
 				fmt.Println("should disconnect " + serverArray[index])
 				if btn1Array[index].Text == "Disconnect" {
+					// Server API: disconnect current server
+					manager.Disconnect(index - 1)
 					btn1Array[index].SetText("Reconnect")
 				} else {
+					// Server API: reconnect current server
+					manager.Reconnect(index - 1)
 					btn1Array[index].SetText("Disconnect")
 				}
 			})
@@ -286,8 +302,16 @@ func main() {
 			btn2 := widget.NewButton("Shutdown", func() {
 				fmt.Println("should Shutdown " + serverArray[index])
 				if btn2Array[index].Text == "Shutdown" {
+					// Server API: shutdown current server
+					manager.ShutDown(index - 1)
 					btn2Array[index].SetText("Restart")
+				} else if btn2Array[index].Text == "Restart" {
+					// Server API: restart current server
+					manager.Restart(index - 1)
+					btn2Array[index].SetText("Reconnect")
 				} else {
+					// Server API: reconnect current server
+					manager.Reconnect(index - 1)
 					btn2Array[index].SetText("Shutdown")
 				}
 			})

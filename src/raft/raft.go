@@ -744,7 +744,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 }
 
 func (rf *Raft) updateServerInfo() {
-
 	switch rf.State {
 	case 0:
 		err := rf.ServerInfo.SetValue(0, "Follower")
@@ -766,7 +765,7 @@ func (rf *Raft) updateServerInfo() {
 	if err1 != nil {
 		return
 	}
-	err2 := rf.ServerInfo.SetValue(2, strconv.Itoa(rf.VotedFor))
+	err2 := rf.ServerInfo.SetValue(2, strconv.Itoa(rf.VotedFor+1))
 	if err2 != nil {
 		return
 	}
