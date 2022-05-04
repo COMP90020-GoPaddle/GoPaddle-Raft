@@ -8,20 +8,23 @@ package raft
 // test with the original before submitting.
 //
 
-import "GoPaddle-Raft/labgob"
-import "GoPaddle-Raft/labrpc"
-import "bytes"
-import "log"
-import "sync"
-import "sync/atomic"
-import "testing"
-import "runtime"
-import "math/rand"
-import crand "crypto/rand"
-import "math/big"
-import "encoding/base64"
-import "time"
-import "fmt"
+import (
+	"GoPaddle-Raft/labgob"
+	"GoPaddle-Raft/labrpc"
+	"bytes"
+	"log"
+	"math/rand"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"testing"
+
+	crand "crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"math/big"
+	"time"
+)
 
 func randstring(n int) string {
 	b := make([]byte, 2*n)
@@ -318,8 +321,9 @@ func (cfg *config) start1(i int, applier func(int, chan ApplyMsg)) {
 	cfg.mu.Unlock()
 
 	applyCh := make(chan ApplyMsg)
+	consoleLogCh := make(chan string)
 
-	rf := Make(ends, i, cfg.saved[i], applyCh)
+	rf := Make(ends, i, cfg.saved[i], applyCh, consoleLogCh)
 
 	cfg.mu.Lock()
 	cfg.rafts[i] = rf

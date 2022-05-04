@@ -20,18 +20,19 @@ type Raft struct {
 	Me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
 
-	applyCh chan ApplyMsg // channel to send commit
+	applyCh      chan ApplyMsg // channel to send commit
+	consoleLogCh chan string
 
 	// Persistent State on all servers
 	CurrentTerm int
-	votedFor    int
+	VotedFor    int
 	log         []LogEntry
 	State       RaftState
 	leaderId    int
 
 	// Volatile State on all servers
-	commitIndex int
-	lastApplied int
+	CommitIndex int
+	LastApplied int
 
 	// Volatile State on leaders
 	nextIndex  []int // for each server, index of the next log entry to send to that server
@@ -49,7 +50,7 @@ type Raft struct {
 	leaderCond    *sync.Cond
 	nonLeaderCond *sync.Cond
 
-	// Apply signal for new committed entry when updating the commitIndex
+	// Apply signal for new committed entry when updating the CommitIndex
 	applyCond *sync.Cond
 }
 
@@ -86,7 +87,7 @@ type AppendEntriesArgs struct {
 	PrevLogIndex int        // index of log entry immediately preceding new ones
 	PrevLogTerm  int        // term of PreLogIndex entry
 	Entries      []LogEntry // log entries to store
-	LeaderCommit int        // leader's commitIndex
+	LeaderCommit int        // leader's CommitIndex
 }
 
 type AppendEntriesReply struct {
