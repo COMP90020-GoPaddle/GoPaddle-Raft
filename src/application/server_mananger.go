@@ -13,7 +13,7 @@ type Manager struct {
 
 func (manager *Manager) StartSevers(num int, unreliable bool) {
 	// create config
-	manager.Cfg = make_config(num, unreliable, -1)
+	manager.Cfg = Make_config(num, unreliable, -1)
 	// initialize an empty operation log
 	//manager.OpLog = &OpLog{}
 	// initialize a Clerk with Clerk specific server names.
@@ -69,16 +69,36 @@ func (manager *Manager) MakePartition() {
 
 func (manager *Manager) ShowServerInfo() {
 	fmt.Printf("Total Server num %v\n", manager.Cfg.n)
-	for _, server := range manager.Cfg.kvservers {
+	for _, server := range manager.Cfg.Kvservers {
 		if server != nil {
-			raftState := server.rf
+			raftState := server.Rf
 			fmt.Printf("Server[%v]: State [%v], Current Term [%v]\n", raftState.Me, raftState.State, raftState.CurrentTerm)
+			//fmt.Println("Log:")
+			//for _, log := range manager.OpLog.operations {
+			//	fmt.Printf("%v; ", log)
+			//	fmt.Println()
+			//}
 			fmt.Println("---------------")
 		} else {
 			// action when the server is shutdown
 		}
 
 	}
+}
+
+func (manager *Manager) ShowSingleServer(rf *raft.Raft) {
+	fmt.Printf("Server[%v]: State [%v], voteFor [%v] Current Term [%v]\n", rf.Me, rf.State, rf.VotedFor, rf.CurrentTerm)
+	fmt.Println("Log:")
+	//for _, log := range manager.OpLog.operations {
+	//	fmt.Printf("%v; ", log)
+	//	fmt.Println()
+	//}
+	fmt.Println("---------------")
+
+}
+
+func (manager *Manager) GetAllServers() []*KVServer {
+	return manager.Cfg.Kvservers
 }
 
 /** Client APIs **/
@@ -130,7 +150,7 @@ type Client struct {
 // Call by connect button
 func (manager *Manager) StartClient() *Client {
 	client := &Client{}
-	ck := manager.Cfg.makeClient(manager.Cfg.All())
+	ck := manager.Cfg.MakeClient(manager.Cfg.All())
 	opLog := &OpLog{}
 	client.ck = ck
 	client.Log = opLog
