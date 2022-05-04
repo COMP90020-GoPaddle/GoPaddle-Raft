@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"image/color"
 	"strconv"
+	"time"
 )
 
 type serverBox struct {
@@ -29,7 +30,7 @@ type clientBox struct {
 }
 
 func (cB *clientBox) MinSize(objects []fyne.CanvasObject) fyne.Size {
-	return fyne.NewSize(400, 450)
+	return fyne.NewSize(400, 600)
 }
 
 func (cB *clientBox) Layout(objects []fyne.CanvasObject, containerSize fyne.Size) {
@@ -68,85 +69,97 @@ func main() {
 		w2.Show()
 	})
 	newClientBtn := widget.NewButton("New Client", func() {
-		go func() {
-			serverIndex := clientCount
-			clientArray[serverIndex] = binding.BindStringList(&[]string{"Invalid"})
-			clientCount++
-			w3 := a.NewWindow("New Client")
-			w3.Resize(fyne.NewSize(400, 450))
-			w3.SetFixedSize(true)
-			rect := canvas.NewRectangle(color.White)
-			rect.Resize(fyne.NewSize(350, 400))
-			rect.StrokeColor = color.White
-			rect.StrokeWidth = 3
-			rect.FillColor = color.Transparent
-			clientContainer := container.New(&clientBox{}, rect)
-			str := make([]string, 1)
-			str[0] = "Client ID:"
-			clientLabel := widget.NewList(
-				func() int {
-					return len(str)
-				},
-				func() fyne.CanvasObject {
-					return widget.NewLabel("template")
-				},
-				func(i widget.ListItemID, o fyne.CanvasObject) {
-					o.(*widget.Label).SetText(str[i])
-				})
-			clientLabel.Resize(fyne.NewSize(80, 40))
-			clientId := widget.NewListWithData(clientArray[serverIndex],
-				func() fyne.CanvasObject {
-					return widget.NewLabel("template")
-				},
-				func(i binding.DataItem, o fyne.CanvasObject) {
-					o.(*widget.Label).Bind(i.(binding.String))
-				})
-			clientId.Resize(fyne.NewSize(160, 40))
-			connectBtn := widget.NewButton("Connect", func() {
-				clientArray[serverIndex].SetValue(0, "new id")
+		serverIndex := clientCount
+		clientArray[serverIndex] = binding.BindStringList(&[]string{"Invalid"})
+		clientCount++
+		w3 := a.NewWindow("New Client")
+		w3.Resize(fyne.NewSize(400, 600))
+		w3.SetFixedSize(true)
+		rect := canvas.NewRectangle(color.White)
+		rect.Resize(fyne.NewSize(350, 550))
+		rect.StrokeColor = color.White
+		rect.StrokeWidth = 3
+		rect.FillColor = color.Transparent
+		clientContainer := container.New(&clientBox{}, rect)
+		str := make([]string, 1)
+		str[0] = "Client ID:"
+		clientLabel := widget.NewList(
+			func() int {
+				return len(str)
+			},
+			func() fyne.CanvasObject {
+				return widget.NewLabel("template")
+			},
+			func(i widget.ListItemID, o fyne.CanvasObject) {
+				o.(*widget.Label).SetText(str[i])
 			})
-			connectBtn.Resize(fyne.NewSize(120, 40))
-			responses := widget.NewTextGridFromString(clientConsoleArray[serverIndex])
-			responsesScroll := container.NewScroll(responses)
-			responsesScroll.Resize(fyne.NewSize(300, 150))
-			responsesScroll.ScrollToBottom()
-			input := widget.NewEntry()
+		clientLabel.Resize(fyne.NewSize(80, 40))
+		clientId := widget.NewListWithData(clientArray[serverIndex],
+			func() fyne.CanvasObject {
+				return widget.NewLabel("template")
+			},
+			func(i binding.DataItem, o fyne.CanvasObject) {
+				o.(*widget.Label).Bind(i.(binding.String))
+			})
+		clientId.Resize(fyne.NewSize(160, 40))
+		connectBtn := widget.NewButton("Connect", func() {
+			clientArray[serverIndex].SetValue(0, "new id")
+		})
+		connectBtn.Resize(fyne.NewSize(120, 40))
+		commands := widget.NewTextGridFromString(clientConsoleArray[serverIndex])
+		commandsScroll := container.NewScroll(commands)
+		commandsScroll.Resize(fyne.NewSize(300, 150))
+		commandsScroll.ScrollToBottom()
+
+		input := widget.NewEntry()
+		input.SetPlaceHolder("Enter text...")
+		input.Resize(fyne.NewSize(300, 40))
+		getBtn := widget.NewButton("Get", func() {
+			fmt.Println("Get " + input.Text)
+			clientConsoleArray[serverIndex] += "Get " + input.Text + "\n"
+			fmt.Println(clientConsoleArray[serverIndex])
 			input.SetPlaceHolder("Enter text...")
-			input.Resize(fyne.NewSize(300, 40))
-			getBtn := widget.NewButton("Get", func() {
-				fmt.Println("Get " + input.Text)
-				clientConsoleArray[serverIndex] += "Get " + input.Text + "\n"
-				fmt.Println(clientConsoleArray[serverIndex])
-				input.SetPlaceHolder("Enter text...")
-				input.SetText("")
-				responses.SetText(clientConsoleArray[serverIndex])
-				responsesScroll.ScrollToBottom()
-			})
-			getBtn.Resize(fyne.NewSize(120, 40))
-			putBtn := widget.NewButton("Put", func() {
-				clientConsoleArray[serverIndex] += "Put " + input.Text + "\n"
-				input.SetPlaceHolder("Enter text...")
-				input.SetText("")
-				responses.SetText(clientConsoleArray[serverIndex])
-				responsesScroll.ScrollToBottom()
-			})
-			putBtn.Resize(fyne.NewSize(120, 40))
-			clientLabel.Move(fyne.NewPos(35, 35))
-			clientId.Move(fyne.NewPos(125, 35))
-			connectBtn.Move(fyne.NewPos(140, 80))
-			input.Move(fyne.NewPos(50, 140))
-			getBtn.Move(fyne.NewPos(60, 200))
-			putBtn.Move(fyne.NewPos(220, 200))
-			responsesScroll.Move(fyne.NewPos(50, 250))
-			clientContainer.Add(clientLabel)
-			clientContainer.Add(clientId)
-			clientContainer.Add(connectBtn)
-			clientContainer.Add(input)
-			clientContainer.Add(getBtn)
-			clientContainer.Add(putBtn)
-			clientContainer.Add(responsesScroll)
-			w3.SetContent(clientContainer)
-			w3.Show()
+			input.SetText("")
+			commands.SetText(clientConsoleArray[serverIndex])
+			commandsScroll.ScrollToBottom()
+		})
+		getBtn.Resize(fyne.NewSize(120, 40))
+		putBtn := widget.NewButton("Put", func() {
+			clientConsoleArray[serverIndex] += "Put " + input.Text + "\n"
+			input.SetPlaceHolder("Enter text...")
+			input.SetText("")
+			commands.SetText(clientConsoleArray[serverIndex])
+			commandsScroll.ScrollToBottom()
+		})
+		responseText := binding.NewString()
+		response := widget.NewEntryWithData(responseText)
+		responseScroll := container.NewScroll(response)
+		responseScroll.Resize(fyne.NewSize(300, 150))
+		putBtn.Resize(fyne.NewSize(120, 40))
+		clientLabel.Move(fyne.NewPos(35, 35))
+		clientId.Move(fyne.NewPos(125, 35))
+		connectBtn.Move(fyne.NewPos(140, 80))
+		input.Move(fyne.NewPos(50, 140))
+		getBtn.Move(fyne.NewPos(60, 200))
+		putBtn.Move(fyne.NewPos(220, 200))
+		commandsScroll.Move(fyne.NewPos(50, 250))
+		responseScroll.Move(fyne.NewPos(50, 410))
+		clientContainer.Add(clientLabel)
+		clientContainer.Add(clientId)
+		clientContainer.Add(connectBtn)
+		clientContainer.Add(input)
+		clientContainer.Add(getBtn)
+		clientContainer.Add(putBtn)
+		clientContainer.Add(commandsScroll)
+		clientContainer.Add(responseScroll)
+		w3.SetContent(clientContainer)
+		w3.Show()
+		go func() {
+			for {
+				time.Sleep(5000 * time.Millisecond)
+				str, _ := responseText.Get()
+				responseText.Set(str + "new line\n")
+			}
 		}()
 	})
 	partitionBtn := widget.NewButton("Make Partition", func() {
@@ -184,105 +197,103 @@ func main() {
 		values := make([]binding.ExternalStringList, num+1)
 		for i := 1; i <= num; i++ {
 			index := i
-			go func() {
-				// bind each widget to its raft server
-				serverArray[index] = "raft server" + strconv.Itoa(index)
-				values[index] = binding.BindStringList(
-					&[]string{"Item 1", "Item 2", "Item 3", "Item 4", "Item 5"},
-				)
-				text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
-				text1.TextSize = 20
-				text1.Alignment = fyne.TextAlignCenter
-				labelList := widget.NewList(
-					func() int {
-						return len(labels)
-					},
-					func() fyne.CanvasObject {
-						return widget.NewLabel("template")
-					},
-					func(i widget.ListItemID, o fyne.CanvasObject) {
-						o.(*widget.Label).SetText(labels[i])
-					})
+			// bind each widget to its raft server
+			serverArray[index] = "raft server" + strconv.Itoa(index)
+			values[index] = binding.BindStringList(
+				&[]string{"Item 1", "Item 2", "Item 3", "Item 4", "Item 5"},
+			)
+			text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
+			text1.TextSize = 20
+			text1.Alignment = fyne.TextAlignCenter
+			labelList := widget.NewList(
+				func() int {
+					return len(labels)
+				},
+				func() fyne.CanvasObject {
+					return widget.NewLabel("template")
+				},
+				func(i widget.ListItemID, o fyne.CanvasObject) {
+					o.(*widget.Label).SetText(labels[i])
+				})
 
-				valueList := widget.NewListWithData(values[index],
-					func() fyne.CanvasObject {
-						return widget.NewLabel("template")
-					},
-					func(i binding.DataItem, o fyne.CanvasObject) {
-						o.(*widget.Label).Bind(i.(binding.String))
-					})
-				labelList.Resize(fyne.NewSize(120, 200))
-				valueList.Resize(fyne.NewSize(60, 200))
-				text2 := canvas.NewText("LogEntries", color.White)
-				text2.TextSize = 10
-				text2.Alignment = fyne.TextAlignCenter
-				rect1 := canvas.NewRectangle(color.White)
-				rect1.Resize(fyne.NewSize(200, 80))
-				rect1.StrokeColor = color.White
-				rect1.StrokeWidth = 1
-				rect1.FillColor = color.Transparent
-				logEntries := widget.NewTextGrid()
-				logEntries.SetText("Tiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\n")
-				logScroll := container.NewScroll(logEntries)
-				logScroll.Resize(fyne.NewSize(200, 80))
-				logScroll.ScrollToBottom()
-				text3 := canvas.NewText("Applies", color.White)
-				text3.TextSize = 10
-				text3.Alignment = fyne.TextAlignCenter
-				rect2 := canvas.NewRectangle(color.White)
-				rect2.Resize(fyne.NewSize(200, 80))
-				rect2.StrokeColor = color.White
-				rect2.StrokeWidth = 1
-				rect2.FillColor = color.Transparent
-				applies := widget.NewTextGrid()
-				applies.SetText("Sleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\n")
-				applyScroll := container.NewScroll(applies)
-				applyScroll.Resize(fyne.NewSize(200, 80))
-				applyScroll.ScrollToBottom()
-				btn1 := widget.NewButton("Disconnect", func() {
-					fmt.Println("should disconnect " + serverArray[index])
-					if btn1Array[index].Text == "Disconnect" {
-						btn1Array[index].SetText("Reconnect")
-					} else {
-						btn1Array[index].SetText("Disconnect")
-					}
+			valueList := widget.NewListWithData(values[index],
+				func() fyne.CanvasObject {
+					return widget.NewLabel("template")
+				},
+				func(i binding.DataItem, o fyne.CanvasObject) {
+					o.(*widget.Label).Bind(i.(binding.String))
 				})
-				btn1Array[index] = btn1
-				btn1.Resize(fyne.NewSize(120, 40))
-				btn2 := widget.NewButton("Shutdown", func() {
-					fmt.Println("should Shutdown " + serverArray[index])
-					if btn2Array[index].Text == "Shutdown" {
-						btn2Array[index].SetText("Restart")
-					} else {
-						btn2Array[index].SetText("Shutdown")
-					}
-				})
-				btn2Array[index] = btn2
-				btn2.Resize(fyne.NewSize(120, 40))
-				text1.Move(fyne.NewPos(float32(145+(index-1)*230), 25))
-				labelList.Move(fyne.NewPos(float32(45+(index-1)*230), 65))
-				valueList.Move(fyne.NewPos(float32(180+(index-1)*230), 65))
-				text2.Move(fyne.NewPos(float32(60+(index-1)*230), 260))
-				rect1.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
-				logScroll.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
-				text3.Move(fyne.NewPos(float32(50+(index-1)*230), 360))
-				rect2.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
-				applyScroll.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
-				btn1.Move(fyne.NewPos(float32(80+(index-1)*230), 680))
-				btn2.Move(fyne.NewPos(float32(80+(index-1)*230), 720))
-				serverContainer.Add(text1)
-				serverContainer.Add(labelList)
-				serverContainer.Add(valueList)
-				serverContainer.Add(text2)
-				serverContainer.Add(logScroll)
-				serverContainer.Add(rect1)
-				serverContainer.Add(text3)
-				serverContainer.Add(applyScroll)
-				serverContainer.Add(rect2)
-				serverContainer.Add(btn1)
-				serverContainer.Add(btn2)
-				serverContainer.Refresh()
-			}()
+			labelList.Resize(fyne.NewSize(120, 200))
+			valueList.Resize(fyne.NewSize(60, 200))
+			text2 := canvas.NewText("LogEntries", color.White)
+			text2.TextSize = 10
+			text2.Alignment = fyne.TextAlignCenter
+			rect1 := canvas.NewRectangle(color.White)
+			rect1.Resize(fyne.NewSize(200, 80))
+			rect1.StrokeColor = color.White
+			rect1.StrokeWidth = 1
+			rect1.FillColor = color.Transparent
+			logEntries := widget.NewTextGrid()
+			logEntries.SetText("Tiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\n")
+			logScroll := container.NewScroll(logEntries)
+			logScroll.Resize(fyne.NewSize(200, 80))
+			logScroll.ScrollToBottom()
+			text3 := canvas.NewText("Applies", color.White)
+			text3.TextSize = 10
+			text3.Alignment = fyne.TextAlignCenter
+			rect2 := canvas.NewRectangle(color.White)
+			rect2.Resize(fyne.NewSize(200, 80))
+			rect2.StrokeColor = color.White
+			rect2.StrokeWidth = 1
+			rect2.FillColor = color.Transparent
+			applies := widget.NewTextGrid()
+			applies.SetText("Sleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\n")
+			applyScroll := container.NewScroll(applies)
+			applyScroll.Resize(fyne.NewSize(200, 80))
+			applyScroll.ScrollToBottom()
+			btn1 := widget.NewButton("Disconnect", func() {
+				fmt.Println("should disconnect " + serverArray[index])
+				if btn1Array[index].Text == "Disconnect" {
+					btn1Array[index].SetText("Reconnect")
+				} else {
+					btn1Array[index].SetText("Disconnect")
+				}
+			})
+			btn1Array[index] = btn1
+			btn1.Resize(fyne.NewSize(120, 40))
+			btn2 := widget.NewButton("Shutdown", func() {
+				fmt.Println("should Shutdown " + serverArray[index])
+				if btn2Array[index].Text == "Shutdown" {
+					btn2Array[index].SetText("Restart")
+				} else {
+					btn2Array[index].SetText("Shutdown")
+				}
+			})
+			btn2Array[index] = btn2
+			btn2.Resize(fyne.NewSize(120, 40))
+			text1.Move(fyne.NewPos(float32(145+(index-1)*230), 25))
+			labelList.Move(fyne.NewPos(float32(45+(index-1)*230), 65))
+			valueList.Move(fyne.NewPos(float32(180+(index-1)*230), 65))
+			text2.Move(fyne.NewPos(float32(60+(index-1)*230), 260))
+			rect1.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
+			logScroll.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
+			text3.Move(fyne.NewPos(float32(50+(index-1)*230), 360))
+			rect2.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
+			applyScroll.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
+			btn1.Move(fyne.NewPos(float32(80+(index-1)*230), 680))
+			btn2.Move(fyne.NewPos(float32(80+(index-1)*230), 720))
+			serverContainer.Add(text1)
+			serverContainer.Add(labelList)
+			serverContainer.Add(valueList)
+			serverContainer.Add(text2)
+			serverContainer.Add(logScroll)
+			serverContainer.Add(rect1)
+			serverContainer.Add(text3)
+			serverContainer.Add(applyScroll)
+			serverContainer.Add(rect2)
+			serverContainer.Add(btn1)
+			serverContainer.Add(btn2)
+			serverContainer.Refresh()
 		}
 		rect3 := canvas.NewRectangle(color.White)
 		rect3.Resize(fyne.NewSize(1100, 180))
