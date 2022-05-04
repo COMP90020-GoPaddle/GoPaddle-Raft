@@ -261,8 +261,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.requestMap = make(map[int64]int)
 
 	kv.applyCh = make(chan raft.ApplyMsg)
-	kv.consoleLogCh = make(chan string)
-	kv.Rf = raft.Make(servers, me, persister, kv.applyCh, kv.consoleLogCh)
+	kv.Rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	DPrintf("Server Start: %v", kv.me)
 	// You may need initialization code here.

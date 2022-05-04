@@ -324,16 +324,16 @@ func main() {
 		rect3.StrokeWidth = 1
 		rect3.FillColor = color.Transparent
 
-		tmpStr := time.Now().Format("2006/01/02 15:04:05 ") + "[GoPaddle]: Platform has been started.\n"
-		cfg.ConsoleLogs = binding.BindString(&tmpStr)
-		console := widget.NewEntryWithData(cfg.ConsoleLogs)
+		//tmpStr := time.Now().Format("2006/01/02 15:04:05 ") + "[GoPaddle]: Platform has been started.\n"
+		//cfg.ConsoleLogs = binding.BindString(&tmpStr)
+		//console := widget.NewEntryWithData(cfg.ConsoleLogs)
 
-		consoleScroll := container.NewScroll(console)
-		consoleScroll.Resize(fyne.NewSize(1100, 180))
-		consoleScroll.Move(fyne.NewPos(50, 480))
-		consoleScroll.ScrollToBottom()
-		serverContainer.Add(rect3)
-		serverContainer.Add(consoleScroll)
+		//consoleScroll := container.NewScroll(console)
+		//consoleScroll.Resize(fyne.NewSize(1100, 180))
+		//consoleScroll.Move(fyne.NewPos(50, 480))
+		//consoleScroll.ScrollToBottom()
+		//serverContainer.Add(rect3)
+		//serverContainer.Add(consoleScroll)
 		w2.Hide()
 	})
 	clientParamsContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(220, 60)), label, selectNum, reliable, confirmBtn)

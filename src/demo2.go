@@ -2,7 +2,6 @@ package main
 
 import (
 	"GoPaddle-Raft/application"
-	"GoPaddle-Raft/raft"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -12,24 +11,6 @@ import (
 	"image/color"
 	"strconv"
 )
-
-func strServerInfo(rf *raft.Raft) []string {
-	var state string
-	switch rf.State {
-	case 0:
-		state = "Follower"
-	case 1:
-		state = "Candidate"
-	case 2:
-		state = "Leader"
-	}
-	voteFor := strconv.Itoa(rf.VotedFor)
-	term := strconv.Itoa(rf.CurrentTerm)
-	commitInx := strconv.Itoa(rf.CommitIndex)
-	lastApplied := strconv.Itoa(rf.LastApplied)
-
-	return []string{state, term, voteFor, commitInx, lastApplied}
-}
 
 func main() {
 	a := app.New()
@@ -60,24 +41,33 @@ func main() {
 	manager.StartSevers(3, true)
 
 	labels := []string{"State", "currentTerm", "votedFor", "commitIndex", "lastApplied"}
-	values := make([]binding.ExternalStringList, 1)
+	//values := make([]binding.ExternalStringList, 1)
 
-	str := strServerInfo(manager.Cfg.Kvservers[1].Rf)
+	//str := strServerInfo(manager.Cfg.Kvservers[1].Rf)
 
-	go func() {
-		for {
-			manager.ShowSingleServer(manager.Cfg.Kvservers[1].Rf)
-			str = strServerInfo(manager.Cfg.Kvservers[1].Rf)
-			err := values[0].Reload()
-			if err != nil {
-				return
-			}
-		}
-	}()
+	//go func() {
+	//	for {
+	//		manager.ShowSingleServer(manager.Cfg.Kvservers[0].Rf)
+	//		//str = strServerInfo(manager.Cfg.Kvservers[1].Rf)
+	//		//err := values[0].Reload()
+	//		//if err != nil {
+	//		//	return
+	//		//}
+	//		//select {
+	//		//case <-manager.Cfg.Kvservers[0].Rf.InfoCh:
+	//		//	manager.ShowSingleServer(manager.Cfg.Kvservers[0].Rf)
+	//		//	//str = strServerInfo(manager.Cfg.Kvservers[1].Rf)
+	//		//	err := values[0].Reload()
+	//		//	if err != nil {
+	//		//		return
+	//		//	}
+	//		//}
+	//	}
+	//}()
 
-	values[0] = binding.BindStringList(
-		&str,
-	)
+	//values[0] = binding.BindStringList(
+	//	&manager.Cfg.Kvservers[0].Rf.ServerInfo,
+	//)
 
 	text1 := canvas.NewText("Raft Server No."+strconv.Itoa(0), color.White)
 	text1.TextSize = 20
@@ -93,7 +83,7 @@ func main() {
 			o.(*widget.Label).SetText(labels[i])
 		})
 
-	valueList := widget.NewListWithData(values[0],
+	valueList := widget.NewListWithData(manager.Cfg.Kvservers[0].Rf.ServerInfo,
 		func() fyne.CanvasObject {
 			return widget.NewLabel("template")
 		},

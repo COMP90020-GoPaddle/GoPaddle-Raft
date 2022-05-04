@@ -321,9 +321,9 @@ func (cfg *config) start1(i int, applier func(int, chan ApplyMsg)) {
 	cfg.mu.Unlock()
 
 	applyCh := make(chan ApplyMsg)
-	consoleLogCh := make(chan string)
+	//consoleLogCh := make(chan string)
 
-	rf := Make(ends, i, cfg.saved[i], applyCh, consoleLogCh)
+	rf := Make(ends, i, cfg.saved[i], applyCh)
 
 	cfg.mu.Lock()
 	cfg.rafts[i] = rf

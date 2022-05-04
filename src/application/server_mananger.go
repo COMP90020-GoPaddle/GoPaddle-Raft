@@ -88,7 +88,10 @@ func (manager *Manager) ShowServerInfo() {
 }
 
 func (manager *Manager) ShowSingleServer(rf *raft.Raft) {
-	fmt.Printf("Server[%v]: State [%v], voteFor [%v] Current Term [%v]\n", rf.Me, rf.State, rf.VotedFor, rf.CurrentTerm)
+	state, _ := rf.ServerInfo.GetValue(0)
+	term, _ := rf.ServerInfo.GetValue(1)
+	vote, _ := rf.ServerInfo.GetValue(2)
+	fmt.Printf("Server[%v]: State [%v], Current Term [%v], voteFor [%v]\n", rf.Me, state, term, vote)
 	fmt.Println("Log:")
 	//for _, log := range manager.OpLog.operations {
 	//	fmt.Printf("%v; ", log)

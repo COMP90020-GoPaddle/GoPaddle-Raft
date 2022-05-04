@@ -4,6 +4,7 @@ import (
 	"GoPaddle-Raft/labgob"
 	"GoPaddle-Raft/labrpc"
 	"bytes"
+	"fyne.io/fyne/v2/data/binding"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -96,10 +97,14 @@ func (rf *Raft) mainLoop() {
 func (rf *Raft) startElection() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	rf.consoleLogCh <- DLog("Raft Server[%v]: Timeout, Starting election | current term: %d | current state: %d",
-		rf.Me, rf.CurrentTerm, rf.State)
+	//rf.consoleLogCh <- DLog("Raft Server[%v]: Timeout, Starting election | current term: %d | current state: %d",
+	//	rf.Me, rf.CurrentTerm, rf.State)
 	// convertTo candidate including reset timeout and make currentTerm+1
 	rf.convertTo(CANDIDATE)
+	// update server info
+	rf.updateServerInfo()
+	//rf.InfoCh <- true
+
 	// persist the State
 	rf.persist()
 	// already vote for itself
@@ -151,6 +156,11 @@ func (rf *Raft) startElection() {
 					// win the majority
 					if voteCnt > len(rf.peers)/2 && rf.State == CANDIDATE {
 						rf.convertTo(LEADER)
+
+						// update server info
+						rf.updateServerInfo()
+						//rf.InfoCh <- true
+
 						DPrintf("[startElection | become leader] raft %d convert to leader | current term: %d | current State: %d\n",
 							rf.Me, rf.CurrentTerm, rf.State)
 						// reinitialize after election
@@ -169,6 +179,11 @@ func (rf *Raft) startElection() {
 					if rf.CurrentTerm < reply.Term {
 						rf.convertTo(FOLLOWER)
 						rf.CurrentTerm = reply.Term
+
+						// update server info
+						rf.updateServerInfo()
+						//rf.InfoCh <- true
+
 						rf.persist()
 					}
 				}
@@ -220,8 +235,8 @@ func (rf *Raft) broadcast() {
 			}
 
 			if len(args.Entries) > 0 {
-				rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Ready to Broadcast: %v",
-					rf.Me, rf.CommitIndex+1, args.Entries)
+				//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Ready to Broadcast: %v",
+				//	rf.Me, rf.CommitIndex+1, args.Entries)
 			}
 
 			rf.mu.Unlock()
@@ -240,8 +255,8 @@ func (rf *Raft) broadcast() {
 				// whether the appendEntries are accepted
 				if reply.Success {
 					if len(args.Entries) > 0 {
-						rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Accepted by Server[%v]: | current term: %d | current state: %d",
-							rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State)
+						//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Accepted by Server[%v]: | current term: %d | current state: %d",
+						//	rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State)
 					}
 					// update the matchIndex and nextIndex, check if the logEntry can be committed
 					DPrintf("[broadcast | reply true] raft %d broadcast to %d accepted | current term: %d | current State: %d\n",
@@ -253,8 +268,8 @@ func (rf *Raft) broadcast() {
 					rf.checkN()
 				} else {
 					if len(args.Entries) > 0 {
-						rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Rejected by Server[%v] | current term: %d | current state: %d | reply term: %d",
-							rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State, reply.Term)
+						//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Rejected by Server[%v] | current term: %d | current state: %d | reply term: %d",
+						//	rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State, reply.Term)
 					}
 					DPrintf("[broadcast | reply false] raft %d broadcast to %d rejected | current term: %d | current state: %d | reply term: %d\n",
 						rf.Me, id, rf.CurrentTerm, rf.State, reply.Term)
@@ -262,6 +277,10 @@ func (rf *Raft) broadcast() {
 					if rf.CurrentTerm < reply.Term {
 						rf.convertTo(FOLLOWER)
 						rf.CurrentTerm = reply.Term
+						// update server info
+						rf.updateServerInfo()
+						//rf.InfoCh <- true
+
 						rf.persist()
 						rf.mu.Unlock()
 						return
@@ -283,8 +302,8 @@ func (rf *Raft) broadcast() {
 				defer rf.mu.Unlock()
 				// failed broadcasting
 				if len(args.Entries) > 0 {
-					rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] RPC to %d failed | current term: %d | current state: %d",
-						rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State)
+					//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] RPC to %d failed | current term: %d | current state: %d",
+					//	rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State)
 				}
 				DPrintf("[broadcast | no reply] raft %d RPC to %d failed | current term: %d | current state: %d \n",
 					rf.Me, id, rf.CurrentTerm, rf.State)
@@ -305,6 +324,11 @@ func (rf *Raft) checkN() {
 			// check the majority
 			if nReplicated > len(rf.peers)/2 {
 				rf.CommitIndex = N
+
+				//update serverInfo
+				rf.updateServerInfo()
+				//rf.InfoCh <- true
+
 				// logEntry can be committed, append to applyCh
 				rf.applyCond.Broadcast()
 				break
@@ -355,6 +379,10 @@ func (rf *Raft) readPersist(data []byte) {
 		rf.CurrentTerm = currentTerm
 		rf.VotedFor = votedFor
 		rf.log = log
+
+		//update server info
+		rf.updateServerInfo()
+		//rf.InfoCh <- true
 	}
 
 	DPrintf("[readPersist] raft: %d || CurrentTerm: %d || VotedFor: %d || log len: %d\n", rf.Me, rf.CurrentTerm, rf.VotedFor, len(log))
@@ -383,6 +411,11 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	if args.Term > rf.CurrentTerm {
 		rf.CurrentTerm = args.Term
 		rf.convertTo(FOLLOWER)
+
+		// update server info
+		rf.updateServerInfo()
+		//rf.InfoCh <- true
+
 		rf.persist()
 	}
 	// do not grant vote due to smaller term or already voted for another one
@@ -405,6 +438,11 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		}
 		// grant vote
 		rf.VotedFor = args.CandidateId
+
+		// update server info
+		rf.updateServerInfo()
+		//rf.InfoCh <- true
+
 		// avoid two election proceeding in parallel
 		rf.electionTimerReset()
 		rf.persist()
@@ -446,9 +484,6 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			rf.State = FOLLOWER
 		}
 
-		// update serverInfo when any variable changes
-		rf.updateServerInfo()
-
 		rf.electionTimerReset()
 	}
 
@@ -459,7 +494,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		DPrintf("[AppendEntries| big term or has leader] raft %d update term or State | current term: %d | current State: %d | recieved term: %d\n",
 			rf.Me, rf.CurrentTerm, rf.State, args.Term)
 	}
-
+	// update serverInfo when any variable changes
+	rf.updateServerInfo()
+	//rf.InfoCh <- true
 	rf.persist()
 
 	//// get higher term, convert to follower and match the term
@@ -517,6 +554,11 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		lastNewEntryIndex := args.PrevLogIndex + entLen
 		if args.LeaderCommit > rf.CommitIndex {
 			rf.CommitIndex = min(args.LeaderCommit, lastNewEntryIndex)
+
+			// update server info
+			rf.updateServerInfo()
+			//rf.InfoCh <- true
+
 			// apply entries after update CommitIndex
 			rf.applyCond.Broadcast()
 		}
@@ -566,11 +608,16 @@ func (rf *Raft) applyEntries() {
 					CommandIndex: i,
 				}
 				rf.LastApplied = i
+
+				// update server info
+				rf.updateServerInfo()
+				//rf.InfoCh <- true
+
 				DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tapply command %v of index %d and term %d to applyCh\n",
 					rf.Me, rf.CurrentTerm, rf.State, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
 				if rf.State == LEADER {
-					rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Successful Apply, commit now: %v",
-						rf.Me, applyMsg.CommandIndex, applyMsg.Command)
+					//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Successful Apply, commit now: %v",
+					//	rf.Me, applyMsg.CommandIndex, applyMsg.Command)
 				}
 				rf.mu.Unlock()
 				rf.applyCh <- applyMsg
@@ -598,12 +645,13 @@ func (rf *Raft) convertTo(state int) {
 		// broadcast includes heartbeat and appendEntries
 		rf.broadcastTimerReset()
 		rf.State = LEADER
-		rf.consoleLogCh <- DLog("Raft Server[%v]: I am Leader | current term: %d | current state: %d",
-			rf.Me, rf.CurrentTerm, rf.State)
+		//rf.consoleLogCh <- DLog("Raft Server[%v]: I am Leader | current term: %d | current state: %d",
+		//	rf.Me, rf.CurrentTerm, rf.State)
 	}
 
 	// update serverInfo when any variable changes
 	rf.updateServerInfo()
+	//rf.InfoCh <- true
 
 	// send signal to awake timer
 	if oldState == LEADER && newState == FOLLOWER {
@@ -645,7 +693,7 @@ func (rf *Raft) killed() bool {
 
 // Make a raft server and do initialization
 func Make(peers []*labrpc.ClientEnd, me int,
-	persister *Persister, applyCh chan ApplyMsg, consoleLogCh chan string) *Raft {
+	persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
@@ -666,10 +714,14 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.CommitIndex = 0
 	rf.LastApplied = 0
 	rf.applyCh = applyCh
-	rf.consoleLogCh = consoleLogCh
+	//rf.consoleLogCh = consoleLogCh
+	//rf.InfoCh = make(chan bool)
 
-	rf.ServerInfo = make([]string, 5)
+	info := make([]string, 5)
+	rf.ServerInfo = binding.BindStringList(&info)
+
 	rf.updateServerInfo()
+	//rf.InfoCh <- true
 
 	rf.applyCond = sync.NewCond(&rf.mu)
 	rf.nonLeaderCond = sync.NewCond(&rf.mu)
@@ -692,20 +744,43 @@ func Make(peers []*labrpc.ClientEnd, me int,
 }
 
 func (rf *Raft) updateServerInfo() {
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
 
 	switch rf.State {
 	case 0:
-		rf.ServerInfo[0] = "Follower"
+		err := rf.ServerInfo.SetValue(0, "Follower")
+		if err != nil {
+			return
+		}
 	case 1:
-		rf.ServerInfo[0] = "Candidate"
+		err := rf.ServerInfo.SetValue(0, "Candidate")
+		if err != nil {
+			return
+		}
 	case 2:
-		rf.ServerInfo[0] = "Leader"
+		err := rf.ServerInfo.SetValue(0, "Leader")
+		if err != nil {
+			return
+		}
 	}
-	rf.ServerInfo[1] = strconv.Itoa(rf.VotedFor)
-	rf.ServerInfo[2] = strconv.Itoa(rf.CurrentTerm)
-	rf.ServerInfo[3] = strconv.Itoa(rf.CommitIndex)
-	rf.ServerInfo[4] = strconv.Itoa(rf.LastApplied)
+	err1 := rf.ServerInfo.SetValue(1, strconv.Itoa(rf.CurrentTerm))
+	if err1 != nil {
+		return
+	}
+	err2 := rf.ServerInfo.SetValue(2, strconv.Itoa(rf.VotedFor))
+	if err2 != nil {
+		return
+	}
+	err3 := rf.ServerInfo.SetValue(3, strconv.Itoa(rf.CommitIndex))
+	if err3 != nil {
+		return
+	}
+	err4 := rf.ServerInfo.SetValue(4, strconv.Itoa(rf.LastApplied))
+	if err4 != nil {
+		return
+	}
 
+	//err := rf.ServerInfo.Reload()
+	//if err != nil {
+	//	return
+	//}
 }
