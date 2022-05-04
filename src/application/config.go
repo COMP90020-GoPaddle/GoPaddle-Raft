@@ -111,12 +111,12 @@ func (cfg *Config) ShutdownServer(i int) {
 		cfg.saved[i] = cfg.saved[i].Copy()
 	}
 
-	kv := cfg.kvservers[i]
+	kv := cfg.Kvservers[i]
 	if kv != nil {
 		cfg.mu.Unlock()
 		kv.Kill()
 		cfg.mu.Lock()
-		cfg.kvservers[i] = nil
+		cfg.Kvservers[i] = nil
 	}
 }
 
@@ -144,7 +144,7 @@ type Config struct {
 	mu           sync.Mutex
 	net          *labrpc.Network
 	n            int
-	kvservers    []*KVServer
+	Kvservers    []*KVServer
 	saved        []*raft.Persister
 	endnames     [][]string // names of each server's sending ClientEnds
 	clerks       map[*kvraft.Clerk][]string
@@ -170,7 +170,7 @@ func make_config(n int, unreliable bool, maxraftstate int) *Config {
 	cfg := &Config{}
 	cfg.net = labrpc.MakeNetwork()
 	cfg.n = n
-	cfg.kvservers = make([]*KVServer, cfg.n)
+	cfg.Kvservers = make([]*KVServer, cfg.n)
 	cfg.saved = make([]*raft.Persister, cfg.n)
 	cfg.endnames = make([][]string, cfg.n)
 	cfg.clerks = make(map[*kvraft.Clerk][]string)
@@ -220,10 +220,10 @@ func (cfg *Config) StartServer(i int) {
 	}
 	cfg.mu.Unlock()
 
-	cfg.kvservers[i] = StartKVServer(ends, i, cfg.saved[i], cfg.maxraftstate)
+	cfg.Kvservers[i] = StartKVServer(ends, i, cfg.saved[i], cfg.maxraftstate)
 
-	kvsvc := labrpc.MakeService(cfg.kvservers[i])
-	rfsvc := labrpc.MakeService(cfg.kvservers[i].rf)
+	kvsvc := labrpc.MakeService(cfg.Kvservers[i])
+	rfsvc := labrpc.MakeService(cfg.Kvservers[i].Rf)
 	srv := labrpc.MakeServer()
 	srv.AddService(kvsvc)
 	srv.AddService(rfsvc)

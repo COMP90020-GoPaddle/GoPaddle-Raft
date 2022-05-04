@@ -3,6 +3,7 @@ package application
 import (
 	"GoPaddle-Raft/kvraft"
 	"GoPaddle-Raft/porcupine"
+	"GoPaddle-Raft/raft"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -24,8 +25,6 @@ func (manager *Manager) StartSevers(num int, unreliable bool) {
 	manager.Cfg = make_config(num, unreliable, -1)
 	// initialize an empty operation log
 	manager.OpLog = &OpLog{}
-	// initialize a Clerk with Clerk specific server names.
-	manager.Clerk = manager.Cfg.MakeClient(manager.Cfg.All())
 }
 
 func (manager *Manager) ShutDown(serverID int) {
@@ -77,9 +76,9 @@ func (manager *Manager) MakePartition() {
 
 func (manager *Manager) ShowServerInfo() {
 	fmt.Printf("Total Server num %v\n", manager.Cfg.n)
-	for _, server := range manager.Cfg.kvservers {
+	for _, server := range manager.Cfg.Kvservers {
 		if server != nil {
-			raftState := server.rf
+			raftState := server.Rf
 			fmt.Printf("Server[%v]: State [%v], Current Term [%v]\n", raftState.Me, raftState.State, raftState.CurrentTerm)
 			fmt.Println("Log:")
 			for _, log := range manager.OpLog.operations {
@@ -92,5 +91,20 @@ func (manager *Manager) ShowServerInfo() {
 		}
 
 	}
+}
+
+func (manager *Manager) ShowSingleServer(rf *raft.Raft) {
+	fmt.Printf("Server[%v]: State [%v], voteFor [%v] Current Term [%v]\n", rf.Me, rf.State, rf.VotedFor, rf.CurrentTerm)
+	fmt.Println("Log:")
+	for _, log := range manager.OpLog.operations {
+		fmt.Printf("%v; ", log)
+		fmt.Println()
+	}
+	fmt.Println("---------------")
+
+}
+
+func (manager *Manager) GetAllServers() []*KVServer {
+	return manager.Cfg.Kvservers
 
 }

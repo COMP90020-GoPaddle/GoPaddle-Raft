@@ -40,7 +40,7 @@ type Op struct {
 type KVServer struct {
 	mu      sync.Mutex
 	me      int // the id of current server
-	rf      *raft.Raft
+	Rf      *raft.Raft
 	applyCh chan raft.ApplyMsg
 	dead    int32 // set by Kill()
 
@@ -122,7 +122,7 @@ func (kv *KVServer) isDuplicate(clientId int64, requestId int) bool {
 // Send operation tp raft and wait
 func (kv *KVServer) waitRaft(operation Op) bool {
 	// Send to raft
-	index, _, isLeader := kv.rf.Start(operation)
+	index, _, isLeader := kv.Rf.Start(operation)
 	if !isLeader {
 		return true
 	}
@@ -173,7 +173,7 @@ func (kv *KVServer) waitRaft(operation Op) bool {
 //
 func (kv *KVServer) Kill() {
 	atomic.StoreInt32(&kv.dead, 1)
-	kv.rf.Kill()
+	kv.Rf.Kill()
 	// Your code here, if desired.
 }
 
@@ -255,7 +255,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.requestMap = make(map[int64]int)
 
 	kv.applyCh = make(chan raft.ApplyMsg)
-	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
+	kv.Rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	DPrintf("Server Start: %v", kv.me)
 	// You may need initialization code here.
