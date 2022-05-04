@@ -95,7 +95,9 @@ func (rf *Raft) mainLoop() {
 func (rf *Raft) startElection() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	// convertTo candidate including reset timeout and make CurrentTerm+1
+	rf.consoleLogCh <- DLog("Raft Server[%v]: Timeout, Starting election | current term: %d | current state: %d",
+		rf.Me, rf.CurrentTerm, rf.State)
+	// convertTo candidate including reset timeout and make currentTerm+1
 	rf.convertTo(CANDIDATE)
 	// persist the State
 	rf.persist()
@@ -215,9 +217,16 @@ func (rf *Raft) broadcast() {
 				Entries:      rf.log[rf.nextIndex[id]:],
 				LeaderCommit: rf.CommitIndex,
 			}
+
+			if len(args.Entries) > 0 {
+				rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Ready to Broadcast: %v",
+					rf.Me, rf.CommitIndex+1, args.Entries)
+			}
+
 			rf.mu.Unlock()
 			reply := &AppendEntriesReply{}
-			// State of broadcasting
+			// state of broadcasting
+
 			if rf.sendAppendEntries(id, args, reply) {
 				rf.mu.Lock()
 				// check State whether changed during broadcasting
@@ -229,6 +238,10 @@ func (rf *Raft) broadcast() {
 				}
 				// whether the appendEntries are accepted
 				if reply.Success {
+					if len(args.Entries) > 0 {
+						rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Accepted by Server[%v]: | current term: %d | current state: %d",
+							rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State)
+					}
 					// update the matchIndex and nextIndex, check if the logEntry can be committed
 					DPrintf("[broadcast | reply true] raft %d broadcast to %d accepted | current term: %d | current State: %d\n",
 						rf.Me, id, rf.CurrentTerm, rf.State)
@@ -238,7 +251,11 @@ func (rf *Raft) broadcast() {
 					rf.nextIndex[id] = rf.matchIndex[id] + 1
 					rf.checkN()
 				} else {
-					DPrintf("[broadcast | reply false] raft %d broadcast to %d rejected | current term: %d | current State: %d | reply term: %d\n",
+					if len(args.Entries) > 0 {
+						rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Rejected by Server[%v] | current term: %d | current state: %d | reply term: %d",
+							rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State, reply.Term)
+					}
+					DPrintf("[broadcast | reply false] raft %d broadcast to %d rejected | current term: %d | current state: %d | reply term: %d\n",
 						rf.Me, id, rf.CurrentTerm, rf.State, reply.Term)
 					// get higher term, convert to follower and match the term
 					if rf.CurrentTerm < reply.Term {
@@ -264,7 +281,11 @@ func (rf *Raft) broadcast() {
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
 				// failed broadcasting
-				DPrintf("[broadcast | no reply] raft %d RPC to %d failed | current term: %d | current State: %d \n",
+				if len(args.Entries) > 0 {
+					rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] RPC to %d failed | current term: %d | current state: %d",
+						rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State)
+				}
+				DPrintf("[broadcast | no reply] raft %d RPC to %d failed | current term: %d | current state: %d \n",
 					rf.Me, id, rf.CurrentTerm, rf.State)
 			}
 		}(i, curTerm)
@@ -309,7 +330,9 @@ func (rf *Raft) persist() {
 	e.Encode(rf.log)
 	data := w.Bytes()
 	rf.persister.SaveRaftState(data)
-	DPrintf("[persist] raft: %d || CurrentTerm: %d || VotedFor: %d || log len: %d\n", rf.Me, rf.CurrentTerm, rf.VotedFor, len(rf.log))
+	// rf.consoleLogCh <- DLog("[persist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n",
+	// 	rf.me, rf.currentTerm, rf.votedFor, len(rf.log))
+	DPrintf("[persist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n", rf.Me, rf.CurrentTerm, rf.VotedFor, len(rf.log))
 }
 
 // restore previously persisted State.
@@ -541,8 +564,13 @@ func (rf *Raft) applyEntries() {
 				rf.LastApplied = i
 				DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tapply command %v of index %d and term %d to applyCh\n",
 					rf.Me, rf.CurrentTerm, rf.State, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
+				if rf.State == LEADER {
+					rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Successful Apply, commit now: %v",
+						rf.Me, applyMsg.CommandIndex, applyMsg.Command)
+				}
 				rf.mu.Unlock()
 				rf.applyCh <- applyMsg
+
 			}
 		}
 	}
@@ -566,6 +594,8 @@ func (rf *Raft) convertTo(state int) {
 		// broadcast includes heartbeat and appendEntries
 		rf.broadcastTimerReset()
 		rf.State = LEADER
+		rf.consoleLogCh <- DLog("Raft Server[%v]: I am Leader | current term: %d | current state: %d",
+			rf.Me, rf.CurrentTerm, rf.State)
 	}
 
 	// send signal to awake timer
@@ -608,7 +638,7 @@ func (rf *Raft) killed() bool {
 
 // Make a raft server and do initialization
 func Make(peers []*labrpc.ClientEnd, me int,
-	persister *Persister, applyCh chan ApplyMsg) *Raft {
+	persister *Persister, applyCh chan ApplyMsg, consoleLogCh chan string) *Raft {
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
@@ -629,6 +659,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.CommitIndex = 0
 	rf.LastApplied = 0
 	rf.applyCh = applyCh
+	rf.consoleLogCh = consoleLogCh
 
 	rf.applyCond = sync.NewCond(&rf.mu)
 	rf.nonLeaderCond = sync.NewCond(&rf.mu)

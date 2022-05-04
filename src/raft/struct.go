@@ -20,7 +20,8 @@ type Raft struct {
 	Me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
 
-	applyCh chan ApplyMsg // channel to send commit
+	applyCh      chan ApplyMsg // channel to send commit
+	consoleLogCh chan string
 
 	// Persistent State on all servers
 	CurrentTerm int

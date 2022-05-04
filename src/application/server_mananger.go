@@ -1,7 +1,6 @@
 package application
 
 import (
-	"GoPaddle-Raft/kvraft"
 	"GoPaddle-Raft/porcupine"
 	"GoPaddle-Raft/raft"
 	"fmt"
@@ -17,12 +16,12 @@ type OpLog struct {
 type Manager struct {
 	Cfg   *Config
 	OpLog *OpLog
-	Clerk *kvraft.Clerk
+	Clerk *Clerk
 }
 
 func (manager *Manager) StartSevers(num int, unreliable bool) {
 	// create config
-	manager.Cfg = make_config(num, unreliable, -1)
+	manager.Cfg = Make_config(num, unreliable, -1)
 	// initialize an empty operation log
 	manager.OpLog = &OpLog{}
 }

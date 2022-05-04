@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"image/color"
+	"strconv"
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -9,8 +13,8 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
-	"strconv"
+
+	"GoPaddle-Raft/application"
 )
 
 type serverBox struct {
@@ -36,6 +40,7 @@ func (cB *clientBox) Layout(objects []fyne.CanvasObject, containerSize fyne.Size
 	pos := fyne.NewPos(25, 25+containerSize.Height-cB.MinSize(objects).Height)
 	objects[0].Move(pos)
 }
+
 func main() {
 	a := app.New()
 	w := a.NewWindow("GoPaddle's Application")
@@ -67,6 +72,7 @@ func main() {
 	newClusterBtn := widget.NewButton("New Cluster", func() {
 		w2.Show()
 	})
+
 	newClientBtn := widget.NewButton("New Client", func() {
 		go func() {
 			serverIndex := clientCount
@@ -149,6 +155,7 @@ func main() {
 			w3.Show()
 		}()
 	})
+
 	partitionBtn := widget.NewButton("Make Partition", func() {
 		if btnArray[2].Text == "Make Partition" {
 			btnArray[2].SetText("Reconnect All")
@@ -156,6 +163,7 @@ func main() {
 			btnArray[2].SetText("Make Partition")
 		}
 	})
+
 	btnArray[2] = partitionBtn
 	exitBtn := widget.NewButton("Exit", func() {
 		w.Close()
@@ -166,6 +174,7 @@ func main() {
 
 	//w2
 	label := canvas.NewText("How many server to create?", color.White)
+	// image := canvas.NewImageFromFile("./logo.png")
 	selectNum := widget.NewSelect([]string{"1", "2", "3", "4", "5"}, nil)
 	reliable := widget.NewCheck("Reliable Network", nil)
 	confirmBtn := widget.NewButton("Confirm", func() {
@@ -182,6 +191,20 @@ func main() {
 		//unchanged
 		labels := []string{"State", "currentTerm", "votedFor", "commitIndex", "lastApplied"}
 		values := make([]binding.ExternalStringList, num+1)
+
+		// test part
+		cfg := application.Make_config(num, !reliable.Checked, -1)
+		fmt.Println(cfg)
+		go func(cfg *application.Config) {
+			ck := cfg.MakeClient(cfg.All())
+			for i := 1; i < 100; i++ {
+				time.Sleep(10 * time.Second)
+				servers := cfg.ShowServerInfo()
+				fmt.Println(servers[0].ShowDB())
+				ck.Put(fmt.Sprint(i), "put operation")
+			}
+		}(cfg)
+
 		for i := 1; i <= num; i++ {
 			index := i
 			go func() {
@@ -290,12 +313,11 @@ func main() {
 		rect3.StrokeColor = color.White
 		rect3.StrokeWidth = 1
 		rect3.FillColor = color.Transparent
-		console := widget.NewTextGrid()
-		console.SetText(
-			"Raft Server[1]: Uh sama lamaa duma lamaa you assuming I'm a human. What I gotta do to get it through to you I'm superhuman. Innovative and I'm made of rubber. So that anything you saying ricocheting off of me and it'll glue to you\n" +
-				"Raft Server[2]: I'm never stating more than never demonstrating. How to give a motherfuckin' audience a feeling like it's levitating. Never fading and I know that the haters are forever waiting\n" +
-				"Raft Server[3]: For the day that they can say I fell off they'd be celebrating. Cause I know the way to get 'em motivated. I make elevating music you make elevator music\n" +
-				"Raft Server[4]: Well that's what they do when they get jealous they confuse it. It's not hip hop it's pop cause I found a hella way to fuse it. With rock shock rap with Doc. Throw on Lose Yourself and make 'em lose it\n")
+
+		tmpStr := time.Now().Format("2006/01/02 15:04:05 ") + "[GoPaddle]: Platform has been started.\n"
+		cfg.ConsoleLogs = binding.BindString(&tmpStr)
+		console := widget.NewEntryWithData(cfg.ConsoleLogs)
+
 		consoleScroll := container.NewScroll(console)
 		consoleScroll.Resize(fyne.NewSize(1100, 180))
 		consoleScroll.Move(fyne.NewPos(50, 480))
@@ -308,5 +330,6 @@ func main() {
 
 	w2.SetContent(clientParamsContainer)
 	w.SetContent(content)
+
 	w.ShowAndRun()
 }
