@@ -12,6 +12,7 @@ type OpLog struct {
 	operations []porcupine.Operation
 	sync.Mutex
 }
+
 type Manager struct {
 	Cfg   *Config
 	OpLog *OpLog
@@ -75,7 +76,7 @@ func (manager *Manager) MakePartition() {
 }
 
 func (manager *Manager) ShowServerInfo() {
-	fmt.Printf("Total Server num %v\n", len(manager.Cfg.kvservers))
+	fmt.Printf("Total Server num %v\n", manager.Cfg.n)
 	for _, server := range manager.Cfg.kvservers {
 		if server != nil {
 			raftState := server.rf
@@ -86,6 +87,8 @@ func (manager *Manager) ShowServerInfo() {
 				fmt.Println()
 			}
 			fmt.Println("---------------")
+		} else {
+			// action when the server is shutdown
 		}
 
 	}

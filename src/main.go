@@ -60,6 +60,20 @@ func Get(cfg *application.Config, ck *kvraft.Clerk, key string, log *OpLog, cli 
 	return v
 }
 
+//func showServerInfo(cfg *application.Config) {
+//	for _, server := range cfg.Kvservers {
+//		raftState := server.Rf
+//		fmt.Printf("Server[%v]: State [%v], Current Term [%v]\n", raftState.Me, raftState.State, raftState.CurrentTerm)
+//		fmt.Println("Log:")
+//		for _, log := range raftState.Log {
+//			fmt.Printf("%v; ", log)
+//			fmt.Println()
+//		}
+//		fmt.Println("---------------")
+//	}
+//
+//}
+
 func main() {
 	var nServers string
 	fmt.Println("Enter the number of servers: ")
@@ -68,6 +82,10 @@ func main() {
 	manager := &application.Manager{}
 	manager.StartSevers(num, true)
 	manager.ShowServerInfo()
+	//cfg := application.Make_config(num, true, -1)
+	//showServerInfo(cfg)
+	//opLog := &OpLog{}
+	//ck := cfg.MakeClient(cfg.All())
 	var operation string
 	for operation != "exit" {
 		fmt.Println("Enter your command: ")
@@ -138,14 +156,6 @@ func main() {
 
 		if operation == "reconnectAll" {
 			manager.ReconnectAll()
-		}
-
-		if operation == "reconnect" {
-			var serverid string
-			fmt.Println("Enter Server ID: ")
-			fmt.Scanln(&serverid)
-			id, _ := strconv.Atoi(serverid)
-			manager.Reconnect(id)
 		}
 
 	}
