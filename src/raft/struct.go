@@ -2,8 +2,9 @@ package raft
 
 import (
 	"GoPaddle-Raft/labrpc"
-	"fyne.io/fyne/v2/data/binding"
 	"sync"
+
+	"fyne.io/fyne/v2/data/binding"
 )
 
 type Raft struct {
@@ -13,7 +14,8 @@ type Raft struct {
 	Me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
 
-	applyCh chan ApplyMsg // channel to send commit
+	applyCh     chan ApplyMsg // channel to send commit
+	consoleLogs binding.ExternalStringList
 	//consoleLogCh chan string
 
 	// Persistent State on all servers

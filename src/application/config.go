@@ -14,6 +14,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"fyne.io/fyne/v2/data/binding"
 )
 
 func randstring(n int) string {
@@ -157,10 +159,10 @@ type Config struct {
 	maxraftstate int
 	start        time.Time // time at which make_config() was called
 	// begin()/end() statistics
-	t0    time.Time // time at which test_test.go called cfg.begin()
-	rpcs0 int       // rpcTotal() at start of test
-	ops   int32     // number of clerk get/put/append method calls
-	//ConsoleLogs binding.ExternalString
+	t0             time.Time // time at which test_test.go called cfg.begin()
+	rpcs0          int       // rpcTotal() at start of test
+	ops            int32     // number of clerk get/put/append method calls
+	ConsoleBinding binding.ExternalStringList
 }
 
 func (cfg *Config) ShowServerInfo() []*KVServer {
@@ -188,23 +190,13 @@ func Make_config(n int, unreliable bool, maxraftstate int) *Config {
 	cfg.maxraftstate = maxraftstate
 	cfg.start = time.Now()
 
+	tmpStr := time.Now().Format("2006/01/02 15:04:05 ") + "[GoPaddle]: Platform has been started.\n"
+	cfg.ConsoleBinding = binding.BindStringList(
+		&[]string{tmpStr},
+	)
 	// create a full set of KV servers.
 	for i := 0; i < cfg.n; i++ {
 		cfg.StartServer(i)
-		//go func(i int) {
-		//	for msg := range cfg.Kvservers[i].consoleLogCh {
-		//		//fmt.Println(msg)
-		//		cfg.mu.Lock()
-		//		old, err := cfg.ConsoleLogs.Get()
-		//		if err == nil {
-		//			cfg.ConsoleLogs.Set(old + msg + "\n")
-		//			new, _ := cfg.ConsoleLogs.Get()
-		//			fmt.Println(new)
-		//			cfg.ConsoleLogs.Reload()
-		//		}
-		//		cfg.mu.Unlock()
-		//	}
-		//}(i)
 	}
 
 	//.Printf("Servers: %v\n", Cfg.Kvservers)
@@ -244,7 +236,7 @@ func (cfg *Config) StartServer(i int) {
 	}
 	cfg.mu.Unlock()
 
-	cfg.Kvservers[i] = StartKVServer(ends, i, cfg.saved[i], cfg.maxraftstate)
+	cfg.Kvservers[i] = StartKVServer(ends, i, cfg.saved[i], cfg.maxraftstate, cfg.ConsoleBinding)
 
 	kvsvc := labrpc.MakeService(cfg.Kvservers[i])
 	rfsvc := labrpc.MakeService(cfg.Kvservers[i].Rf)
