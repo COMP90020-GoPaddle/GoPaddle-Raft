@@ -49,6 +49,7 @@ type Raft struct {
 	// Relevant server info in a string list
 	//ServerInfo []string
 	ServerInfo binding.ExternalStringList
+	ServerLog  binding.ExternalStringList
 	InfoCh     chan bool
 }
 

@@ -719,8 +719,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	info := make([]string, 5)
 	rf.ServerInfo = binding.BindStringList(&info)
-
 	rf.updateServerInfo()
+
 	//rf.InfoCh <- true
 
 	rf.applyCond = sync.NewCond(&rf.mu)

@@ -213,6 +213,7 @@ func main() {
 		//unchanged
 		labels := []string{"State", "currentTerm", "votedFor", "commitIndex", "lastApplied"}
 		serverInfos := make([]binding.ExternalStringList, num+1)
+		serverLogEntries := make([]binding.ExternalStringList, num+1)
 
 		// test part
 		//cfg := application.Make_config(num, !reliable.Checked, -1)
@@ -266,8 +267,18 @@ func main() {
 			rect1.StrokeColor = color.White
 			rect1.StrokeWidth = 1
 			rect1.FillColor = color.Transparent
-			logEntries := widget.NewTextGrid()
-			logEntries.SetText("Tiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\n")
+
+			logEntries := widget.NewListWithData(serverLogEntries[index],
+				func() fyne.CanvasObject {
+					return widget.NewLabel("template")
+				},
+				func(i binding.DataItem, o fyne.CanvasObject) {
+					o.(*widget.Label).Bind(i.(binding.String))
+				})
+
+			//logEntries := widget.NewTextGrid()
+			//logEntries.SetText("Tiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\n")
+
 			logScroll := container.NewScroll(logEntries)
 			logScroll.Resize(fyne.NewSize(200, 80))
 			logScroll.ScrollToBottom()
