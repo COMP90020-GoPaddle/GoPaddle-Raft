@@ -617,6 +617,7 @@ func (rf *Raft) applyEntries() {
 				// update server info
 				rf.updateServerInfo()
 				// update server apply command
+				rf.updateServerApplies(applyMsg.CommandValid, applyMsg.Command, applyMsg.CommandIndex)
 
 				DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tapply command %v of index %d and term %d to applyCh\n",
 					rf.Me, rf.CurrentTerm, rf.State, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
@@ -802,12 +803,12 @@ func (rf *Raft) updateServerInfo() {
 
 func (rf *Raft) updateServerLogs(log string) {
 	rf.ServerLog.Append(log + "\n")
-	results, _ := rf.ServerLog.Get()
-	fmt.Printf("Demo log: %v\n", results)
+	//results, _ := rf.ServerLog.Get()
+	//fmt.Printf("Demo log: %v\n", results)
 }
 
 func (rf *Raft) updateServerApplies(a ...interface{}) {
-	rf.ServerApply.Append()
-	results, _ := rf.ServerLog.Get()
-	fmt.Printf("Demo log: %v\n", results)
+	rf.ServerApply.Append(fmt.Sprintf("Apply: [%v]; Command: [%v] of CommandIndex: [%v]\n", a...))
+	//results, _ := rf.ServerApply.Get()
+	//fmt.Printf("Demo Apply: %v\n", results)
 }

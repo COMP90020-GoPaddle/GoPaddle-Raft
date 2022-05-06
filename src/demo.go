@@ -237,7 +237,7 @@ func main() {
 			// Server API: since index start from 1, so for kvservers: index-1
 			serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo // init server info binding
 			serverLogEntries[index] = manager.Cfg.Kvservers[index-1].Rf.ServerLog
-			serverApplies[index] =
+			serverApplies[index] = manager.Cfg.Kvservers[index-1].Rf.ServerApply
 
 			text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
 			text1.TextSize = 20
@@ -296,7 +296,7 @@ func main() {
 
 			//applies := widget.NewTextGrid()
 			//applies.SetText("Sleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\n")
-			applies := widget.NewListWithData(serverInfos[index],
+			applies := widget.NewListWithData(serverApplies[index],
 				func() fyne.CanvasObject {
 					return widget.NewLabel("template")
 				},
