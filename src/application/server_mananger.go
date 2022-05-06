@@ -149,6 +149,7 @@ func (log *OpLog) Read() []Operation {
 type Client struct {
 	ck  *Clerk
 	Log *OpLog
+	Cid int64
 }
 
 // Call by connect button
@@ -158,6 +159,7 @@ func (manager *Manager) StartClient() *Client {
 	opLog := &OpLog{}
 	client.ck = ck
 	client.Log = opLog
+	client.Cid = ck.clientId
 	return client
 }
 
