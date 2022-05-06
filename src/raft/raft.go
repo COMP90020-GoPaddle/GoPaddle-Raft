@@ -382,7 +382,6 @@ func (rf *Raft) readPersist(data []byte) {
 		rf.CurrentTerm = currentTerm
 		rf.VotedFor = votedFor
 		rf.log = log
-
 		//update server info
 		rf.updateServerInfo()
 		//rf.InfoCh <- true
@@ -550,8 +549,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			newEntries := make([]LogEntry, len(args.Entries[conflictIndex:]))
 			copy(newEntries, args.Entries[conflictIndex:])
 			rf.log = append(rf.log[:nextIndex+conflictIndex], newEntries...)
+			//fmt.Printf("Rf log after append: %v\n", rf.log)
+			fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries))
 			// Serverlog update
-			rf.updateServerLogs(fmt.Sprintf("%v", newEntries))
+			//rf.updateServerLogs(fmt.Sprintf("%v", newEntries))
 			//rf.log = newLog
 			rf.persist()
 			DPrintf("[AppendEntries] raft %d appended entries from leader | log length: %d\n", rf.Me, len(rf.log))
@@ -730,7 +731,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	//
 	rf.ServerLog = binding.BindStringList(
-		&[]string{""})
+		&[]string{"here"})
 
 	//rf.InfoCh <- true
 
@@ -795,7 +796,7 @@ func (rf *Raft) updateServerInfo() {
 }
 
 func (rf *Raft) updateServerLogs(log string) {
-	err := rf.ServerLog.Append(log)
+	err := rf.ServerLog.Append(log + "\n")
 	if err != nil {
 		return
 	}

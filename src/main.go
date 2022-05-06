@@ -77,6 +77,18 @@ func main() {
 		//		}
 		//	}
 		//}
+		if operation == "log" {
+			fmt.Printf("log: %v\n", manager.Cfg.Kvservers[0].Rf.ServerLog)
+		}
+
+		if operation == "Put" {
+			client.Put(manager.Cfg, "1", "123")
+		}
+		if operation == "Get" {
+			v := client.Get(manager.Cfg, "1")
+			fmt.Printf("Get return: %v\n", v)
+		}
+
 		if operation == "info" {
 			manager.ShowServerInfo()
 		}
