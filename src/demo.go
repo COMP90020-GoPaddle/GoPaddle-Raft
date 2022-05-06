@@ -2,10 +2,6 @@ package main
 
 import (
 	"fmt"
-	"image/color"
-	"strconv"
-	"time"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -13,6 +9,9 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"image/color"
+	"strconv"
+	"strings"
 
 	"GoPaddle-Raft/application"
 )
@@ -108,8 +107,11 @@ func main() {
 				o.(*widget.Label).Bind(i.(binding.String))
 			})
 		clientId.Resize(fyne.NewSize(160, 40))
+		// start client
+		var client *application.Client = nil
 		connectBtn := widget.NewButton("Connect", func() {
-			clientArray[serverIndex].SetValue(0, "new id")
+			client = manager.StartClient() //在哪close?
+			clientArray[serverIndex].SetValue(0, strconv.Itoa(int(client.Cid)))
 		})
 		connectBtn.Resize(fyne.NewSize(120, 40))
 		commands := widget.NewTextGridFromString(clientConsoleArray[serverIndex])
@@ -120,10 +122,16 @@ func main() {
 		input := widget.NewEntry()
 		input.SetPlaceHolder("Enter text...")
 		input.Resize(fyne.NewSize(300, 40))
+		var rsp = ""
+		responseText := binding.NewString()
 		getBtn := widget.NewButton("Get", func() {
 			fmt.Println("Get " + input.Text)
+			rsp = client.Get(manager.Cfg, input.Text)
+			fmt.Println("Get Success:" + rsp)
+			str, _ := responseText.Get()
+			responseText.Set(str + rsp + "\n")
 			clientConsoleArray[serverIndex] += "Get " + input.Text + "\n"
-			fmt.Println(clientConsoleArray[serverIndex])
+			fmt.Println("ClientConsoleBuffer: " + clientConsoleArray[serverIndex])
 			input.SetPlaceHolder("Enter text...")
 			input.SetText("")
 			commands.SetText(clientConsoleArray[serverIndex])
@@ -131,13 +139,16 @@ func main() {
 		})
 		getBtn.Resize(fyne.NewSize(120, 40))
 		putBtn := widget.NewButton("Put", func() {
+			fmt.Println("Put " + input.Text)
 			clientConsoleArray[serverIndex] += "Put " + input.Text + "\n"
+			s := strings.Split(input.Text, ",")
+			client.Put(manager.Cfg, s[0], s[1])
+			fmt.Println("ClientConsoleBuffer: " + clientConsoleArray[serverIndex])
 			input.SetPlaceHolder("Enter text...")
 			input.SetText("")
 			commands.SetText(clientConsoleArray[serverIndex])
 			commandsScroll.ScrollToBottom()
 		})
-		responseText := binding.NewString()
 		response := widget.NewEntryWithData(responseText)
 		responseScroll := container.NewScroll(response)
 		responseScroll.Resize(fyne.NewSize(300, 150))
@@ -160,13 +171,16 @@ func main() {
 		clientContainer.Add(responseScroll)
 		w3.SetContent(clientContainer)
 		w3.Show()
-		go func() {
-			for {
-				time.Sleep(5000 * time.Millisecond)
-				str, _ := responseText.Get()
-				responseText.Set(str + "new line\n")
-			}
-		}()
+		//go func() {
+		//	for {
+		//		time.Sleep(5000 * time.Millisecond)
+		//		str, _ := responseText.Get()
+		//		if str != "" {
+		//			responseText.Set(str + "new line\n")/
+		//		}
+		//
+		//	}
+		//}()
 	})
 
 	partitionBtn := widget.NewButton("Make Partition", func() {
