@@ -212,7 +212,7 @@ func main() {
 
 		//unchanged
 		labels := []string{"State", "currentTerm", "votedFor", "commitIndex", "lastApplied"}
-		values := make([]binding.ExternalStringList, num+1)
+		serverInfos := make([]binding.ExternalStringList, num+1)
 
 		// test part
 		//cfg := application.Make_config(num, !reliable.Checked, -1)
@@ -233,7 +233,7 @@ func main() {
 			serverArray[index] = "raft server" + strconv.Itoa(index)
 
 			// Server API: since index start from 1, so for kvservers: index-1
-			values[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
+			serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
 
 			text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
 			text1.TextSize = 20
@@ -249,7 +249,7 @@ func main() {
 					o.(*widget.Label).SetText(labels[i])
 				})
 
-			valueList := widget.NewListWithData(values[index],
+			valueList := widget.NewListWithData(serverInfos[index],
 				func() fyne.CanvasObject {
 					return widget.NewLabel("template")
 				},
