@@ -214,6 +214,7 @@ func main() {
 		labels := []string{"State", "currentTerm", "votedFor", "commitIndex", "lastApplied"}
 		serverInfos := make([]binding.ExternalStringList, num+1)
 		serverLogEntries := make([]binding.ExternalStringList, num+1)
+		serverApplies := make([]binding.ExternalStringList, num+1)
 
 		// test part
 		//cfg := application.Make_config(num, !reliable.Checked, -1)
@@ -236,6 +237,7 @@ func main() {
 			// Server API: since index start from 1, so for kvservers: index-1
 			serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo // init server info binding
 			serverLogEntries[index] = manager.Cfg.Kvservers[index-1].Rf.ServerLog
+			serverApplies[index] =
 
 			text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
 			text1.TextSize = 20
@@ -291,8 +293,16 @@ func main() {
 			rect2.StrokeColor = color.White
 			rect2.StrokeWidth = 1
 			rect2.FillColor = color.Transparent
-			applies := widget.NewTextGrid()
-			applies.SetText("Sleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\n")
+
+			//applies := widget.NewTextGrid()
+			//applies.SetText("Sleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\n")
+			applies := widget.NewListWithData(serverInfos[index],
+				func() fyne.CanvasObject {
+					return widget.NewLabel("template")
+				},
+				func(i binding.DataItem, o fyne.CanvasObject) {
+					o.(*widget.Label).Bind(i.(binding.String))
+				})
 			applyScroll := container.NewScroll(applies)
 			applyScroll.Resize(fyne.NewSize(200, 80))
 			applyScroll.ScrollToBottom()

@@ -552,7 +552,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			//fmt.Printf("Rf log after append: %v\n", rf.log)
 			fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries))
 			// Serverlog update
-			//rf.updateServerLogs(fmt.Sprintf("%v", newEntries))
+			rf.updateServerLogs(fmt.Sprintf("%v", newEntries))
 			//rf.log = newLog
 			rf.persist()
 			DPrintf("[AppendEntries] raft %d appended entries from leader | log length: %d\n", rf.Me, len(rf.log))
@@ -614,10 +614,9 @@ func (rf *Raft) applyEntries() {
 					CommandIndex: i,
 				}
 				rf.LastApplied = i
-
 				// update server info
 				rf.updateServerInfo()
-				//rf.InfoCh <- true
+				// update server apply command
 
 				DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tapply command %v of index %d and term %d to applyCh\n",
 					rf.Me, rf.CurrentTerm, rf.State, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
@@ -729,9 +728,15 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.ServerInfo = binding.BindStringList(&info)
 	rf.updateServerInfo()
 
-	//
+	// init server log
 	rf.ServerLog = binding.BindStringList(
-		&[]string{"here"})
+		&[]string{},
+	)
+
+	// init server apply
+	rf.ServerApply = binding.BindStringList(
+		&[]string{},
+	)
 
 	//rf.InfoCh <- true
 
@@ -796,8 +801,13 @@ func (rf *Raft) updateServerInfo() {
 }
 
 func (rf *Raft) updateServerLogs(log string) {
-	err := rf.ServerLog.Append(log + "\n")
-	if err != nil {
-		return
-	}
+	rf.ServerLog.Append(log + "\n")
+	results, _ := rf.ServerLog.Get()
+	fmt.Printf("Demo log: %v\n", results)
+}
+
+func (rf *Raft) updateServerApplies(a ...interface{}) {
+	rf.ServerApply.Append()
+	results, _ := rf.ServerLog.Get()
+	fmt.Printf("Demo log: %v\n", results)
 }
