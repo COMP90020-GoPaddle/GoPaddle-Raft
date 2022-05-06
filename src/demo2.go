@@ -2,6 +2,7 @@ package main
 
 import (
 	"GoPaddle-Raft/application"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -45,25 +46,26 @@ func main() {
 
 	//str := strServerInfo(manager.Cfg.Kvservers[1].Rf)
 
-	//go func() {
-	//	for {
-	//		manager.ShowSingleServer(manager.Cfg.Kvservers[0].Rf)
-	//		//str = strServerInfo(manager.Cfg.Kvservers[1].Rf)
-	//		//err := values[0].Reload()
-	//		//if err != nil {
-	//		//	return
-	//		//}
-	//		//select {
-	//		//case <-manager.Cfg.Kvservers[0].Rf.InfoCh:
-	//		//	manager.ShowSingleServer(manager.Cfg.Kvservers[0].Rf)
-	//		//	//str = strServerInfo(manager.Cfg.Kvservers[1].Rf)
-	//		//	err := values[0].Reload()
-	//		//	if err != nil {
-	//		//		return
-	//		//	}
-	//		//}
-	//	}
-	//}()
+	go func() {
+		for {
+			//manager.ShowSingleServer(manager.Cfg.Kvservers[0].Rf)
+			fmt.Printf("%v\n", manager.Cfg.Kvservers[0].Rf.ServerLog)
+			//str = strServerInfo(manager.Cfg.Kvservers[1].Rf)
+			//err := values[0].Reload()
+			//if err != nil {
+			//	return
+			//}
+			//select {
+			//case <-manager.Cfg.Kvservers[0].Rf.InfoCh:
+			//	manager.ShowSingleServer(manager.Cfg.Kvservers[0].Rf)
+			//	//str = strServerInfo(manager.Cfg.Kvservers[1].Rf)
+			//	err := values[0].Reload()
+			//	if err != nil {
+			//		return
+			//	}
+			//}
+		}
+	}()
 
 	//values[0] = binding.BindStringList(
 	//	&manager.Cfg.Kvservers[0].Rf.ServerInfo,

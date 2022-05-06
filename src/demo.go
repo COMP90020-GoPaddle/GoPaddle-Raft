@@ -234,7 +234,8 @@ func main() {
 			serverArray[index] = "raft server" + strconv.Itoa(index)
 
 			// Server API: since index start from 1, so for kvservers: index-1
-			serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
+			serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo // init server info binding
+			serverLogEntries[index] = manager.Cfg.Kvservers[index-1].Rf.ServerLog
 
 			text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
 			text1.TextSize = 20

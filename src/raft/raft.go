@@ -4,6 +4,7 @@ import (
 	"GoPaddle-Raft/labgob"
 	"GoPaddle-Raft/labrpc"
 	"bytes"
+	"fmt"
 	"fyne.io/fyne/v2/data/binding"
 	"math/rand"
 	"strconv"
@@ -353,6 +354,8 @@ func (rf *Raft) persist() {
 	e.Encode(rf.CurrentTerm)
 	e.Encode(rf.VotedFor)
 	e.Encode(rf.log)
+	// try save serverlog in persistent state
+	//e.Encode(rf.ServerLog)
 	data := w.Bytes()
 	rf.persister.SaveRaftState(data)
 	// rf.consoleLogCh <- DLog("[persist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n",
@@ -547,6 +550,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			newEntries := make([]LogEntry, len(args.Entries[conflictIndex:]))
 			copy(newEntries, args.Entries[conflictIndex:])
 			rf.log = append(rf.log[:nextIndex+conflictIndex], newEntries...)
+			// Serverlog update
+			rf.updateServerLogs(fmt.Sprintf("%v", newEntries))
 			//rf.log = newLog
 			rf.persist()
 			DPrintf("[AppendEntries] raft %d appended entries from leader | log length: %d\n", rf.Me, len(rf.log))
@@ -670,6 +675,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if term, isLeader = rf.GetState(); isLeader {
 		rf.mu.Lock()
 		rf.log = append(rf.log, LogEntry{Command: command, Term: rf.CurrentTerm})
+		rf.updateServerLogs(fmt.Sprintf("%v", LogEntry{Command: command, Term: rf.CurrentTerm}))
 		rf.persist()
 		rf.matchIndex[rf.Me] = len(rf.log) - 1
 		index = len(rf.log) - 1
@@ -709,6 +715,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.electionTimerReset()
 
 	rf.log = append(rf.log, LogEntry{Term: 0})
+
 	rf.nextIndex = make([]int, len(rf.peers))
 	rf.matchIndex = make([]int, len(rf.peers))
 	rf.CommitIndex = 0
@@ -720,6 +727,10 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	info := make([]string, 5)
 	rf.ServerInfo = binding.BindStringList(&info)
 	rf.updateServerInfo()
+
+	//
+	rf.ServerLog = binding.BindStringList(
+		&[]string{""})
 
 	//rf.InfoCh <- true
 
@@ -777,9 +788,15 @@ func (rf *Raft) updateServerInfo() {
 	if err4 != nil {
 		return
 	}
-
 	//err := rf.ServerInfo.Reload()
 	//if err != nil {
 	//	return
 	//}
+}
+
+func (rf *Raft) updateServerLogs(log string) {
+	err := rf.ServerLog.Append(log)
+	if err != nil {
+		return
+	}
 }
