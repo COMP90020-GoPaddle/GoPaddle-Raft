@@ -1,8 +1,7 @@
 package application
 
 import (
-	"crypto/rand"
-	"math/big"
+	"sync/atomic"
 	"time"
 
 	"GoPaddle-Raft/labrpc"
@@ -16,18 +15,18 @@ type Clerk struct {
 	lastRequestId int
 }
 
-func nrand() int64 {
-	max := big.NewInt(int64(1) << 62)
-	bigx, _ := rand.Int(rand.Reader, max)
-	x := bigx.Int64()
-	return x
+var Cid int64 = 0
+
+func makeCid() int64 {
+	atomic.AddInt64(&Cid, 1)
+	return Cid
 }
 
 // set random cilentId
 func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.Servers = servers
-	ck.clientId = nrand()
+	ck.clientId = makeCid()
 	// ck.
 	// You'll have to add code here.
 	return ck
