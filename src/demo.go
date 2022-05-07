@@ -124,32 +124,53 @@ func main() {
 		commandsScroll.ScrollToBottom()
 
 		input := widget.NewEntry()
-		input.SetPlaceHolder("Enter text...")
+		input.SetPlaceHolder("\"key,value\" for PUT and \"key\" for GET")
 		input.Resize(fyne.NewSize(300, 40))
 		var rsp = ""
 		responseText := binding.NewString()
 		getBtn := widget.NewButton("Get", func() {
-			fmt.Println("Get " + input.Text)
-			rsp = client.Get(manager.Cfg, input.Text)
-			fmt.Println("Get Success:" + rsp)
-			str, _ := responseText.Get()
-			responseText.Set(str + rsp + "\n")
-			clientConsoleArray[serverIndex] += "Get " + input.Text + "\n"
-			fmt.Println("ClientConsoleBuffer: " + clientConsoleArray[serverIndex])
-			input.SetPlaceHolder("Enter text...")
+			id, _ := clientArray[serverIndex].GetValue(0)
+			if id == "Invalid" {
+				str, _ := responseText.Get()
+				responseText.Set(str + "No connection now!\n")
+				clientConsoleArray[serverIndex] += "No connection now!\n"
+			} else {
+				clientConsoleArray[serverIndex] += "Get " + input.Text
+				if input.Text != "" {
+					rsp = client.Get(manager.Cfg, input.Text)
+					str, _ := responseText.Get()
+					responseText.Set(str + rsp + "\n")
+					clientConsoleArray[serverIndex] += "\n"
+				} else {
+					str, _ := responseText.Get()
+					responseText.Set(str + "Invalid command\n")
+					clientConsoleArray[serverIndex] += "Invalid command\n"
+				}
+			}
+			input.SetPlaceHolder("\"key,value\" for PUT and \"key\" for GET")
 			input.SetText("")
 			commands.SetText(clientConsoleArray[serverIndex])
 			commandsScroll.ScrollToBottom()
 		})
 		getBtn.Resize(fyne.NewSize(120, 40))
 		putBtn := widget.NewButton("Put", func() {
-			fmt.Println("Put " + input.Text)
-			clientConsoleArray[serverIndex] += "Put " + input.Text
-			s := strings.Split(input.Text, ",")
-			rsp := client.Put(manager.Cfg, s[0], s[1])
-			clientConsoleArray[serverIndex] += "  " + rsp + "\n"
-			fmt.Println("ClientConsoleBuffer: " + clientConsoleArray[serverIndex])
-			input.SetPlaceHolder("Enter text...")
+			id, _ := clientArray[serverIndex].GetValue(0)
+			if id == "Invalid" {
+				str, _ := responseText.Get()
+				responseText.Set(str + "No connection now!\n")
+				clientConsoleArray[serverIndex] += "No connection now!\n"
+			} else {
+				clientConsoleArray[serverIndex] += "Put " + input.Text
+				s := strings.Split(input.Text, ",")
+				if len(s) == 2 {
+					rsp := client.Put(manager.Cfg, s[0], s[1])
+					clientConsoleArray[serverIndex] += " " + rsp + "\n"
+				} else {
+					responseText.Set("Invalid command\n")
+					clientConsoleArray[serverIndex] += " Invalid command\n"
+				}
+			}
+			input.SetPlaceHolder("\"key,value\" for PUT and \"key\" for GET")
 			input.SetText("")
 			commands.SetText(clientConsoleArray[serverIndex])
 			commandsScroll.ScrollToBottom()
@@ -228,7 +249,7 @@ func main() {
 	//w2
 	label := canvas.NewText("How many server to create?", color.White)
 	// image := canvas.NewImageFromFile("./logo.png")
-	selectNum := widget.NewSelect([]string{"1", "2", "3", "4", "5"}, nil)
+	selectNum := widget.NewSelect([]string{"2", "3", "4", "5"}, nil)
 	reliable := widget.NewCheck("Reliable Network", nil)
 	confirmBtn := widget.NewButton("Confirm", func() {
 		for idx, item := range serverContainer.Objects {
