@@ -830,6 +830,7 @@ func (rf *Raft) updateConsoleLogs(newLog string) {
 
 func (rf *Raft) updateServerLogs(newEntry LogEntry) {
 	entryStr := logEntryToStr(newEntry)
+	//fmt.Println(entryStr)
 	rf.ServerLog.Append(entryStr + "\n")
 	//results, _ := rf.ServerLog.Get()
 	//fmt.Printf("Demo log: %v\n", results)

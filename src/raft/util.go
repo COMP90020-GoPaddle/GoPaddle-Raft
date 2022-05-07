@@ -36,7 +36,7 @@ func logEntryToStr(newEntry LogEntry) string {
 		result = fmt.Sprintf("T:[%v] K:[%v] V:[] O:[%v] CID:[%v] ReqID:[%v]\n", newEntry.Term,
 			split[0], split[1], split[2], split[3])
 	} else if len(split) == 5 {
-		result = fmt.Sprintf("T:[%v] K:[%v] V:[%v] Oper:[%v] CID:[%v] ReqID:[%v]\n", newEntry.Term,
+		result = fmt.Sprintf("T:[%v] K:[%v] V:[%v] O:[%v] CID:[%v] ReqID:[%v]\n", newEntry.Term,
 			split[0], split[1], split[2], split[3], split[4])
 	}
 
