@@ -55,7 +55,8 @@ type KVServer struct {
 	requestMap map[int64]int
 	dispatcher map[int]chan Notification
 
-	disconn bool // record where it's been disconnected
+	disconn     bool // record whether it's been disconnected
+	ServerStore binding.ExternalStringList
 }
 
 func (kv *KVServer) ShowDB() map[string]string {
@@ -214,8 +215,11 @@ func (kv *KVServer) Listener() {
 		switch operation.Name {
 		case "Put":
 			kv.kvStore[operation.Key] = operation.Value
+			kv.updateServerStore()
 		case "Append":
 			kv.kvStore[operation.Key] += operation.Value
+			kv.updateServerStore()
+
 		}
 		DPrintf("ApplyMsg[%v] Operation: %v, Database: %v", applyMsg, operation, kv.kvStore[operation.Key])
 		//fmt.Printf("ApplyMsg[%v] Operation: %v, Database: %v\n", applyMsg, operation, kv.kvStore[operation.Key])
@@ -266,6 +270,11 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.dispatcher = make(map[int]chan Notification)
 	kv.requestMap = make(map[int64]int)
 
+	// For demo app: init server store as a binding string
+	kv.ServerStore = binding.BindStringList(
+		&[]string{},
+	)
+
 	kv.applyCh = make(chan raft.ApplyMsg)
 	kv.Rf = raft.Make(servers, me, persister, kv.applyCh, consoleBinding)
 
@@ -274,4 +283,20 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	go kv.Listener()
 
 	return kv
+}
+
+func (kv *KVServer) updateServerStore() {
+	kvPair := make([]string, 0)
+	for k, v := range kv.kvStore {
+		//fmt.Println("kv store: =======", k, v)
+		kvPair = append(kvPair, fmt.Sprintf("[%v]:[%v]\n", k, v))
+	}
+	err := kv.ServerStore.Set(kvPair)
+	if err != nil {
+		//fmt.Println("Here", err)
+		return
+	}
+	//v, _ := kv.ServerStore.Get()
+	//fmt.Println("Server store: -----------", v)
+
 }

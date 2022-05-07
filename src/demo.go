@@ -271,7 +271,7 @@ func main() {
 		labels := []string{"State", "currentTerm", "votedFor", "commitIndex", "lastApplied"}
 		serverInfos := make([]binding.ExternalStringList, num+1)
 		serverLogEntries := make([]binding.ExternalStringList, num+1)
-		serverApplies := make([]binding.ExternalStringList, num+1)
+		serverDatabases := make([]binding.ExternalStringList, num+1)
 
 		// test part
 		//cfg := application.Make_config(num, !reliable.Checked, -1)
@@ -294,7 +294,7 @@ func main() {
 			// Server API: since index start from 1, so for kvservers: index-1
 			serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo // init server info binding
 			serverLogEntries[index] = manager.Cfg.Kvservers[index-1].Rf.ServerLog
-			serverApplies[index] = manager.Cfg.Kvservers[index-1].Rf.ServerApply
+			serverDatabases[index] = manager.Cfg.Kvservers[index-1].ServerStore
 
 			text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
 			text1.TextSize = 20
@@ -342,7 +342,7 @@ func main() {
 			logScroll := container.NewScroll(logEntries)
 			logScroll.Resize(fyne.NewSize(200, 80))
 			logScroll.ScrollToBottom()
-			text3 := canvas.NewText("Applies", color.White)
+			text3 := canvas.NewText("KV Database", color.White)
 			text3.TextSize = 10
 			text3.Alignment = fyne.TextAlignCenter
 			rect2 := canvas.NewRectangle(color.White)
@@ -353,7 +353,7 @@ func main() {
 
 			//applies := widget.NewTextGrid()
 			//applies.SetText("Sleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\n")
-			applies := widget.NewListWithData(serverApplies[index],
+			applies := widget.NewListWithData(serverDatabases[index],
 				func() fyne.CanvasObject {
 					return widget.NewLabel("template")
 				},
