@@ -5,7 +5,6 @@ import (
 	"GoPaddle-Raft/labrpc"
 	"bytes"
 	"fmt"
-	"fyne.io/fyne/v2/data/binding"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -818,7 +817,6 @@ func (rf *Raft) updateServerInfo() {
 	//	return
 	//}
 }
-
 
 func (rf *Raft) updateConsoleLogs(newLog string) {
 	// rf.consoleLogs = append(rf.consoleLogs, newLog+"\n")
