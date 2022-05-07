@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"fyne.io/fyne/v2/theme"
 	"image/color"
 	"strconv"
 	"strings"
@@ -44,6 +45,7 @@ func (cB *clientBox) Layout(objects []fyne.CanvasObject, containerSize fyne.Size
 
 func main() {
 	a := app.New()
+	a.Settings().SetTheme(theme.DarkTheme())
 	manager := &application.Manager{}
 	w := a.NewWindow("GoPaddle's Application")
 	w.Resize(fyne.NewSize(1440, 800))
@@ -353,6 +355,18 @@ func main() {
 					serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
 					ss1, _ := serverInfos[index].Get()
 					fmt.Println("Restart--after serverInfos[index]=: -----------------,  info: ", ss1)
+					serverContainer.Remove(valueList)
+					newValueList := widget.NewListWithData(serverInfos[index],
+						func() fyne.CanvasObject {
+							return widget.NewLabel("template")
+						},
+						func(i binding.DataItem, o fyne.CanvasObject) {
+							o.(*widget.Label).Bind(i.(binding.String))
+						})
+					newValueList.Resize(fyne.NewSize(60, 200))
+					newValueList.Move(fyne.NewPos(float32(180+(index-1)*230), 65))
+					valueList = newValueList
+					serverContainer.Add(valueList)
 					btn2Array[index].SetText("Reconnect")
 					//TODO valueList
 				} else {
