@@ -38,6 +38,12 @@ func (cfg *Config) ConnectAll() {
 	}
 }
 
+func (cfg *Config) disconnect(i int, from []int) {
+	cfg.mu.Lock()
+	defer cfg.mu.Unlock()
+	cfg.disconnectUnlocked(i, from)
+}
+
 func (cfg *Config) All() []int {
 	all := make([]int, cfg.n)
 	for i := 0; i < cfg.n; i++ {
