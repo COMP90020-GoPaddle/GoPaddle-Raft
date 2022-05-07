@@ -182,6 +182,7 @@ func (manager *Manager) StartClient() *Client {
 // Call by close client's GUI
 // after calling, drop the client's pointer?
 func (manager *Manager) CloseClient(client *Client) {
+	fmt.Println("Client disconnect: cid:", client.Cid)
 	manager.Cfg.deleteClient(client.ck)
 }
 
@@ -202,9 +203,9 @@ func (client *Client) Get(cfg *Config, key string) string {
 	return v
 }
 
-func (client *Client) Put(cfg *Config, key string, value string) {
+func (client *Client) Put(cfg *Config, key string, value string) string {
 	start := time.Now()
-	client.ck.Put(key, value)
+	v := client.ck.Put(key, value)
 	end := time.Now()
 	cfg.op()
 	if client.Log != nil {
@@ -216,6 +217,7 @@ func (client *Client) Put(cfg *Config, key string, value string) {
 			ClientId: client.ck.clientId,
 		})
 	}
+	return v
 }
 
 func (client *Client) Append(cfg *Config, key string, value string) {

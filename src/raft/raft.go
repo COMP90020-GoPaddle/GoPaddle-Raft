@@ -307,7 +307,7 @@ func (rf *Raft) broadcast() {
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
 				// failed broadcasting
-				if len(args.Entries) > 0 {
+				if len(args.Entries) > 2 {
 					rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] RPC to %d failed | current term: %d",
 						rf.Me+1, args.LeaderCommit+1, id+1, rf.CurrentTerm))
 				}

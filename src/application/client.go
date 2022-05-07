@@ -1,8 +1,7 @@
 package application
 
 import (
-	"crypto/rand"
-	"math/big"
+	"sync/atomic"
 	"time"
 
 	"GoPaddle-Raft/labrpc"
@@ -16,18 +15,18 @@ type Clerk struct {
 	lastRequestId int
 }
 
-func nrand() int64 {
-	max := big.NewInt(int64(1) << 62)
-	bigx, _ := rand.Int(rand.Reader, max)
-	x := bigx.Int64()
-	return x
+var Cid int64 = 0
+
+func makeCid() int64 {
+	atomic.AddInt64(&Cid, 1)
+	return Cid
 }
 
 // set random cilentId
 func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.Servers = servers
-	ck.clientId = nrand()
+	ck.clientId = makeCid()
 	// ck.
 	// You'll have to add code here.
 	return ck
@@ -56,7 +55,11 @@ func (ck *Clerk) Get(key string) string {
 		RequestId: updatedRequestId,
 	}
 	DPrintf("Client[%d], Request[%d] Get, Key=%s ", ck.clientId, updatedRequestId, key)
+	cnt := 0
 	for {
+		if cnt > 20 {
+			return "Timeout"
+		}
 		savedLeaderId := ck.leaderId
 		// make a new reply in every loop
 		var reply GetReply
@@ -77,7 +80,8 @@ func (ck *Clerk) Get(key string) string {
 		// Fail -> leaderId + 1 and retry
 		DPrintf("Wrong leader[%d], try another one", savedLeaderId)
 		ck.leaderId = (savedLeaderId + 1) % len(ck.Servers)
-		time.Sleep(10 * time.Millisecond)
+		cnt++
+		time.Sleep(30 * time.Millisecond)
 	}
 }
 
@@ -91,7 +95,7 @@ func (ck *Clerk) Get(key string) string {
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
 //
-func (ck *Clerk) PutAppend(key string, value string, op string) {
+func (ck *Clerk) PutAppend(key string, value string, op string) string {
 	// You will have to modify this function.
 	// requestId ready to update
 	updatedRequestId := ck.lastRequestId + 1
@@ -103,7 +107,12 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 		RequestId: updatedRequestId,
 	}
 	DPrintf("Client[%d], Request[%d] PutAppend, Key=%s Value=%s", ck.clientId, updatedRequestId, key, value)
+	cnt := 0
 	for {
+		if cnt > 20 {
+			DPrintf("%v Timeout", op)
+			return "Timeout"
+		}
 		savedLeaderId := ck.leaderId
 		// make a new reply in every loop
 		var reply PutAppendReply
@@ -114,20 +123,21 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 			if reply.Err == OK {
 				DPrintf("%v Success", op)
 				ck.lastRequestId = updatedRequestId
-				return
+				return "OK"
 			}
 		}
 
 		// Fail -> leaderId + 1 and retry
 		DPrintf("Wrong leader[%d], try another one", savedLeaderId)
 		ck.leaderId = (savedLeaderId + 1) % len(ck.Servers)
-		time.Sleep(10 * time.Millisecond)
+		cnt++
+		time.Sleep(30 * time.Millisecond)
 	}
 }
 
-func (ck *Clerk) Put(key string, value string) {
-	ck.PutAppend(key, value, "Put")
+func (ck *Clerk) Put(key string, value string) string {
+	return ck.PutAppend(key, value, "Put")
 }
-func (ck *Clerk) Append(key string, value string) {
-	ck.PutAppend(key, value, "Append")
+func (ck *Clerk) Append(key string, value string) string {
+	return ck.PutAppend(key, value, "Append")
 }

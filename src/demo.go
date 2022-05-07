@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"fyne.io/fyne/v2/theme"
 	"image/color"
 	"strconv"
 	"strings"
@@ -44,6 +45,7 @@ func (cB *clientBox) Layout(objects []fyne.CanvasObject, containerSize fyne.Size
 
 func main() {
 	a := app.New()
+	a.Settings().SetTheme(theme.DarkTheme())
 	manager := &application.Manager{}
 	w := a.NewWindow("GoPaddle's Application")
 	w.Resize(fyne.NewSize(1440, 800))
@@ -112,7 +114,7 @@ func main() {
 		// start client
 		var client *application.Client = nil
 		connectBtn := widget.NewButton("Connect", func() {
-			client = manager.StartClient() //在哪close?
+			client = manager.StartClient()
 			clientArray[serverIndex].SetValue(0, strconv.Itoa(int(client.Cid)))
 		})
 		connectBtn.Resize(fyne.NewSize(120, 40))
@@ -142,9 +144,10 @@ func main() {
 		getBtn.Resize(fyne.NewSize(120, 40))
 		putBtn := widget.NewButton("Put", func() {
 			fmt.Println("Put " + input.Text)
-			clientConsoleArray[serverIndex] += "Put " + input.Text + "\n"
+			clientConsoleArray[serverIndex] += "Put " + input.Text
 			s := strings.Split(input.Text, ",")
-			client.Put(manager.Cfg, s[0], s[1])
+			rsp := client.Put(manager.Cfg, s[0], s[1])
+			clientConsoleArray[serverIndex] += "  " + rsp + "\n"
 			fmt.Println("ClientConsoleBuffer: " + clientConsoleArray[serverIndex])
 			input.SetPlaceHolder("Enter text...")
 			input.SetText("")
@@ -173,6 +176,12 @@ func main() {
 		clientContainer.Add(responseScroll)
 		w3.SetContent(clientContainer)
 		w3.Show()
+		w3.SetCloseIntercept(func() {
+			if client != nil {
+				manager.CloseClient(client)
+			}
+			w3.Close()
+		})
 		//go func() {
 		//	for {
 		//		time.Sleep(5000 * time.Millisecond)
@@ -202,6 +211,17 @@ func main() {
 		w.Close()
 		w2.Close()
 	})
+
+	// w.close by click x
+	w.SetCloseIntercept(func() {
+		a.Quit()
+	})
+
+	// w2.close by click x
+	w2.SetCloseIntercept(func() {
+		w2.Hide()
+	})
+
 	controlContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(240, 80)), layout.NewSpacer(), image, text2, text3, newClusterBtn, newClientBtn, partitionBtn, exitBtn)
 	content := container.New(layout.NewHBoxLayout(), serverContainer, controlContainer)
 
@@ -353,6 +373,18 @@ func main() {
 					serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
 					ss1, _ := serverInfos[index].Get()
 					fmt.Println("Restart--after serverInfos[index]=: -----------------,  info: ", ss1)
+					serverContainer.Remove(valueList)
+					newValueList := widget.NewListWithData(serverInfos[index],
+						func() fyne.CanvasObject {
+							return widget.NewLabel("template")
+						},
+						func(i binding.DataItem, o fyne.CanvasObject) {
+							o.(*widget.Label).Bind(i.(binding.String))
+						})
+					newValueList.Resize(fyne.NewSize(60, 200))
+					newValueList.Move(fyne.NewPos(float32(180+(index-1)*230), 65))
+					valueList = newValueList
+					serverContainer.Add(valueList)
 					btn2Array[index].SetText("Reconnect")
 					//TODO valueList
 				} else {
