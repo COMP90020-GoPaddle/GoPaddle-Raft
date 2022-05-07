@@ -219,7 +219,7 @@ func main() {
 		// create raft server here and store it into corresponding index
 
 		// Server API: startServers
-		manager.StartSevers(num, true)
+		manager.StartSevers(num, !reliable.Checked)
 
 		serverArray = make([]string, num+1)
 		btn1Array := make([]*widget.Button, num+1)
@@ -232,17 +232,15 @@ func main() {
 		serverApplies := make([]binding.ExternalStringList, num+1)
 
 		// test part
-		//cfg := application.Make_config(num, !reliable.Checked, -1)
-		//fmt.Println(cfg)
-		//go func(cfg *application.Config) {
-		//	ck := cfg.MakeClient(cfg.All())
-		//	for i := 1; i < 100; i++ {
-		//		time.Sleep(10 * time.Second)
-		//		servers := cfg.ShowServerInfo()
-		//		fmt.Println(servers[0].ShowDB())
-		//		ck.Put(fmt.Sprint(i), "put operation")
-		//	}
-		//}(cfg)
+		go func(cfg *application.Config) {
+			ck := cfg.MakeClient(cfg.All())
+			for i := 1; i < 100; i++ {
+				time.Sleep(10 * time.Second)
+				servers := cfg.ShowServerInfo()
+				fmt.Println(servers[0].ShowDB())
+				ck.Put(fmt.Sprint(i), "value")
+			}
+		}(manager.Cfg)
 
 		for i := 1; i <= num; i++ {
 			index := i
@@ -393,16 +391,46 @@ func main() {
 		rect3.StrokeWidth = 1
 		rect3.FillColor = color.Transparent
 
-		//tmpStr := time.Now().Format("2006/01/02 15:04:05 ") + "[GoPaddle]: Platform has been started.\n"
-		//cfg.ConsoleLogs = binding.BindString(&tmpStr)
-		//console := widget.NewEntryWithData(cfg.ConsoleLogs)
+		// tmpStr := time.Now().Format("2006/01/02 15:04:05 ") + "[GoPaddle]: Platform has been started.\n"
+		// consoleBinding := binding.BindStringList(
+		// 	&[]string{tmpStr},
+		// )
 
-		//consoleScroll := container.NewScroll(console)
-		//consoleScroll.Resize(fyne.NewSize(1100, 180))
-		//consoleScroll.Move(fyne.NewPos(50, 480))
-		//consoleScroll.ScrollToBottom()
-		//serverContainer.Add(rect3)
-		//serverContainer.Add(consoleScroll)
+		// consoleBinding.Set(tmpStr)
+		// console := widget.NewEntryWithData(consoleBinding)
+		console := widget.NewListWithData(manager.Cfg.ConsoleBinding,
+			func() fyne.CanvasObject {
+				return widget.NewLabel("template")
+			},
+			func(i binding.DataItem, o fyne.CanvasObject) {
+				o.(*widget.Label).Bind(i.(binding.String))
+			})
+
+		// go func() {
+		// 	for {
+		// 		time.Sleep(1000 * time.Millisecond)
+		// 		servers := manager.GetAllServers()
+		// 		new := make([]string, 50)
+		// 		for i := 0; i < len(servers); i++ {
+		// 			new = append(new, servers[i].Rf.GetConsoleLogs()...)
+		// 		}
+		// 		if len(new) == 0 {
+		// 			continue
+		// 		}
+		// 		// tmpStr += new
+		// 		// old, _ := consoleBinding.Get()
+		// 		// consoleBinding.Set(old + strings.Join(new, ""))
+		// 		consoleBinding.Append(strings.Join(new, ""))
+		// 	}
+
+		// }()
+
+		consoleScroll := container.NewScroll(console)
+		consoleScroll.Resize(fyne.NewSize(1100, 180))
+		consoleScroll.Move(fyne.NewPos(50, 480))
+		consoleScroll.ScrollToBottom()
+		serverContainer.Add(rect3)
+		serverContainer.Add(consoleScroll)
 		w2.Hide()
 	})
 	clientParamsContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(220, 60)), label, selectNum, reliable, confirmBtn)

@@ -11,6 +11,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"fyne.io/fyne/v2/data/binding"
 )
 
 // Election timer (Only used when not leader)
@@ -27,6 +29,8 @@ func (rf *Raft) electionTimer() {
 		if elapse > rf.electionTimeout {
 			DPrintf("[electionTimer] | raft %d election timeout %d | current term: %d | current State: %d\n",
 				rf.Me, rf.electionTimeout, rf.CurrentTerm, rf.State)
+			rf.updateConsoleLogs(DLog("Raft Server[%v]: Timeout %d, Starting election | current term: %d",
+				rf.Me+1, rf.electionTimeout, rf.CurrentTerm))
 			rf.mu.Unlock()
 			rf.electionSignalChan <- true
 			rf.mu.Lock()
@@ -98,8 +102,6 @@ func (rf *Raft) mainLoop() {
 func (rf *Raft) startElection() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	//rf.consoleLogCh <- DLog("Raft Server[%v]: Timeout, Starting election | current term: %d | current state: %d",
-	//	rf.Me, rf.CurrentTerm, rf.State)
 	// convertTo candidate including reset timeout and make currentTerm+1
 	rf.convertTo(CANDIDATE)
 	// update server info
@@ -236,8 +238,8 @@ func (rf *Raft) broadcast() {
 			}
 
 			if len(args.Entries) > 0 {
-				//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Ready to Broadcast: %v",
-				//	rf.Me, rf.CommitIndex+1, args.Entries)
+				rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Send to Server[%d]: %v",
+					rf.Me+1, rf.CommitIndex+1, id+1, args.Entries))
 			}
 
 			rf.mu.Unlock()
@@ -256,8 +258,8 @@ func (rf *Raft) broadcast() {
 				// whether the appendEntries are accepted
 				if reply.Success {
 					if len(args.Entries) > 0 {
-						//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Accepted by Server[%v]: | current term: %d | current state: %d",
-						//	rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State)
+						rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Accepted by Server[%v]: | current term: %d",
+							rf.Me+1, args.LeaderCommit+1, id+1, rf.CurrentTerm))
 					}
 					// update the matchIndex and nextIndex, check if the logEntry can be committed
 					DPrintf("[broadcast | reply true] raft %d broadcast to %d accepted | current term: %d | current State: %d\n",
@@ -269,8 +271,8 @@ func (rf *Raft) broadcast() {
 					rf.checkN()
 				} else {
 					if len(args.Entries) > 0 {
-						//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Rejected by Server[%v] | current term: %d | current state: %d | reply term: %d",
-						//	rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State, reply.Term)
+						rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Rejected by Server[%v] | current term: %d | reply term: %d",
+							rf.Me+1, args.LeaderCommit+1, id+1, rf.CurrentTerm, reply.Term))
 					}
 					DPrintf("[broadcast | reply false] raft %d broadcast to %d rejected | current term: %d | current state: %d | reply term: %d\n",
 						rf.Me, id, rf.CurrentTerm, rf.State, reply.Term)
@@ -292,6 +294,10 @@ func (rf *Raft) broadcast() {
 					} else {
 						rf.nextIndex[id] = reply.ConflictIndex
 					}
+					if len(args.Entries) > 0 {
+						rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Send Retry to Server[%v] | nextIndex: %d",
+							rf.Me+1, args.LeaderCommit+1, id+1, rf.nextIndex[id]))
+					}
 					DPrintf("[appendEntriesAsync] raft %d append entries to %d rejected: decrement nextIndex and retry | nextIndex: %d\n",
 						rf.Me, id, rf.nextIndex[id])
 					rf.mu.Unlock()
@@ -303,8 +309,8 @@ func (rf *Raft) broadcast() {
 				defer rf.mu.Unlock()
 				// failed broadcasting
 				if len(args.Entries) > 0 {
-					//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] RPC to %d failed | current term: %d | current state: %d",
-					//	rf.Me, args.LeaderCommit+1, id, rf.CurrentTerm, rf.State)
+					rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] RPC to %d failed | current term: %d",
+						rf.Me+1, args.LeaderCommit+1, id+1, rf.CurrentTerm))
 				}
 				DPrintf("[broadcast | no reply] raft %d RPC to %d failed | current term: %d | current state: %d \n",
 					rf.Me, id, rf.CurrentTerm, rf.State)
@@ -358,8 +364,6 @@ func (rf *Raft) persist() {
 	//e.Encode(rf.ServerLog)
 	data := w.Bytes()
 	rf.persister.SaveRaftState(data)
-	// rf.consoleLogCh <- DLog("[persist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n",
-	// 	rf.me, rf.currentTerm, rf.votedFor, len(rf.log))
 	DPrintf("[persist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n", rf.Me, rf.CurrentTerm, rf.VotedFor, len(rf.log))
 }
 
@@ -558,6 +562,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			rf.updateServerLogs(fmt.Sprintf("%v\n", newEntries))
 			//rf.log = newLog
 			rf.persist()
+			rf.updateConsoleLogs(DLog("Raft Server[%v]: Receive %v Rrom Leader | Log Length: %d",
+				rf.Me+1, newEntries, len(rf.log)))
 			DPrintf("[AppendEntries] raft %d appended entries from leader | log length: %d\n", rf.Me, len(rf.log))
 		}
 		lastNewEntryIndex := args.PrevLogIndex + entLen
@@ -624,10 +630,8 @@ func (rf *Raft) applyEntries() {
 
 				DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tapply command %v of index %d and term %d to applyCh\n",
 					rf.Me, rf.CurrentTerm, rf.State, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
-				if rf.State == LEADER {
-					//rf.consoleLogCh <- DLog("Raft Server[%v]: Command[%v] Successful Apply, commit now: %v",
-					//	rf.Me, applyMsg.CommandIndex, applyMsg.Command)
-				}
+				rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Successful Apply, commit now: %v",
+					rf.Me+1, lastApplied+1, applyMsg.Command))
 				rf.mu.Unlock()
 				rf.applyCh <- applyMsg
 
@@ -654,8 +658,8 @@ func (rf *Raft) convertTo(state int) {
 		// broadcast includes heartbeat and appendEntries
 		rf.broadcastTimerReset()
 		rf.State = LEADER
-		//rf.consoleLogCh <- DLog("Raft Server[%v]: I am Leader | current term: %d | current state: %d",
-		//	rf.Me, rf.CurrentTerm, rf.State)
+		rf.updateConsoleLogs(DLog("Raft Server[%v]: I am Leader | current term: %d",
+			rf.Me+1, rf.CurrentTerm))
 	}
 
 	// update serverInfo when any variable changes
@@ -683,6 +687,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		rf.persist()
 		rf.matchIndex[rf.Me] = len(rf.log) - 1
 		index = len(rf.log) - 1
+		rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Replicated | current term: %d",
+			rf.Me+1, rf.matchIndex[rf.Me], rf.CurrentTerm))
 		DPrintf("[Start] raft %d replicate command %v to log | current term: %d | current State: %d | log length: %d\n",
 			rf.Me, command, rf.CurrentTerm, rf.State, len(rf.log))
 		rf.mu.Unlock()
@@ -703,7 +709,7 @@ func (rf *Raft) killed() bool {
 
 // Make a raft server and do initialization
 func Make(peers []*labrpc.ClientEnd, me int,
-	persister *Persister, applyCh chan ApplyMsg) *Raft {
+	persister *Persister, applyCh chan ApplyMsg, consoleBinding binding.ExternalStringList) *Raft {
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
@@ -725,7 +731,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.CommitIndex = 0
 	rf.LastApplied = 0
 	rf.applyCh = applyCh
-	//rf.consoleLogCh = consoleLogCh
+	rf.consoleLogs = consoleBinding
 	//rf.InfoCh = make(chan bool)
 
 	info := make([]string, 5)
@@ -811,6 +817,12 @@ func (rf *Raft) updateServerInfo() {
 	//if err != nil {
 	//	return
 	//}
+}
+
+
+func (rf *Raft) updateConsoleLogs(newLog string) {
+	// rf.consoleLogs = append(rf.consoleLogs, newLog+"\n")
+	rf.consoleLogs.Append(newLog + "\n")
 }
 
 func (rf *Raft) updateServerLogs(log string) {

@@ -2,18 +2,19 @@ package main
 
 import (
 	"GoPaddle-Raft/application"
+	"image/color"
+	"strconv"
 	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
-	"image/color"
-	"strconv"
 )
 
-func main() {
+func mian() {
 	a := app.New()
 	w := a.NewWindow("GoPaddle's Application")
 	w.Resize(fyne.NewSize(800, 600))

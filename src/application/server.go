@@ -10,9 +10,11 @@ import (
 	"GoPaddle-Raft/labgob"
 	"GoPaddle-Raft/labrpc"
 	"GoPaddle-Raft/raft"
+
+	"fyne.io/fyne/v2/data/binding"
 )
 
-const Debug = false
+const Debug = true
 const Demo = true
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
@@ -149,6 +151,8 @@ func (kv *KVServer) waitRaft(operation Op) bool {
 	// Receive Msg, check client and request ids
 	case notification := <-ch:
 		if notification.ClientId != operation.ClientId || notification.RequestId != operation.RequestId {
+			DPrintf("Raft Client[%v] -> My Client[%v], Raft Request[%v] -> My Request[%v]",
+				notification.ClientId, operation.ClientId, notification.RequestId, operation.RequestId)
 			wrongLeader = true
 		}
 	// Timeout
@@ -248,7 +252,7 @@ func (kv *KVServer) Listener() {
 // StartKVServer() must return quickly, so it should start goroutines
 // for any long-running work.
 //
-func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
+func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int, consoleBinding binding.ExternalStringList) *KVServer {
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	labgob.Register(Op{})
@@ -263,7 +267,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.requestMap = make(map[int64]int)
 
 	kv.applyCh = make(chan raft.ApplyMsg)
-	kv.Rf = raft.Make(servers, me, persister, kv.applyCh)
+	kv.Rf = raft.Make(servers, me, persister, kv.applyCh, consoleBinding)
 
 	DPrintf("Server Start: %v", kv.me)
 	// You may need initialization code here.
