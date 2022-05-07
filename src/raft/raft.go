@@ -808,7 +808,7 @@ func (rf *Raft) updateServerLogs(log string) {
 }
 
 func (rf *Raft) updateServerApplies(a ...interface{}) {
-	rf.ServerApply.Append(fmt.Sprintf("Apply: [%v]; Command: [%v] of CommandIndex: [%v]\n", a...))
+	rf.ServerApply.Append(fmt.Sprintf("%v: [%v] commit index: [%v]\n", a...))
 	//results, _ := rf.ServerApply.Get()
 	//fmt.Printf("Demo Apply: %v\n", results)
 }

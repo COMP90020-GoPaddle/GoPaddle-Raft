@@ -41,6 +41,9 @@ func (cfg *Config) ConnectAll() {
 func (cfg *Config) All() []int {
 	all := make([]int, cfg.n)
 	for i := 0; i < cfg.n; i++ {
+		if cfg.Kvservers[i].disconn {
+			continue
+		}
 		all[i] = i
 	}
 	return all
@@ -161,6 +164,7 @@ type Config struct {
 	rpcs0 int       // rpcTotal() at start of test
 	ops   int32     // number of clerk get/put/append method calls
 	//ConsoleLogs binding.ExternalString
+
 }
 
 func (cfg *Config) ShowServerInfo() []*KVServer {
