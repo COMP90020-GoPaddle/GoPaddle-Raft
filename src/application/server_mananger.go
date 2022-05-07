@@ -26,17 +26,32 @@ func (manager *Manager) ShutDown(serverID int) {
 }
 
 func (manager *Manager) Disconnect(serverID int) {
-	pa := make([][]int, 2)
-	pa[0] = make([]int, 0)
-	pa[1] = make([]int, 0)
+	//pa := make([][]int, 2)
+	//pa[0] = make([]int, 0)
+	//pa[1] = make([]int, 0)
+	//for j := 0; j < manager.Cfg.n; j++ {
+	//	if manager.Cfg.Kvservers[j].disconn {
+	//		continue
+	//	}
+	//	if j == serverID {
+	//		pa[0] = append(pa[0], j)
+	//		manager.Cfg.Kvservers[j].disconn = true
+	//	} else {
+	//		pa[1] = append(pa[1], j)
+	//	}
+	//}
+	otherServers := make([]int, 0)
 	for j := 0; j < manager.Cfg.n; j++ {
-		if j == serverID {
-			pa[0] = append(pa[0], j)
-		} else {
-			pa[1] = append(pa[1], j)
+		if manager.Cfg.Kvservers[j].disconn {
+			continue
+		}
+		if j != serverID {
+			otherServers = append(otherServers, j)
 		}
 	}
-	manager.Cfg.partition(pa[0], pa[1])
+	manager.Cfg.Kvservers[serverID].disconn = true
+	manager.Cfg.disconnect(serverID, otherServers)
+	//manager.Cfg.partition(pa[0], pa[1])
 }
 
 func (manager *Manager) Restart(serverID int) {
@@ -44,6 +59,7 @@ func (manager *Manager) Restart(serverID int) {
 }
 
 func (manager *Manager) Reconnect(serverID int) {
+	manager.Cfg.Kvservers[serverID].disconn = false
 	manager.Cfg.connectUnlocked(serverID, manager.Cfg.All())
 }
 
@@ -149,6 +165,7 @@ func (log *OpLog) Read() []Operation {
 type Client struct {
 	ck  *Clerk
 	Log *OpLog
+	Cid int64
 }
 
 // Call by connect button
@@ -158,6 +175,7 @@ func (manager *Manager) StartClient() *Client {
 	opLog := &OpLog{}
 	client.ck = ck
 	client.Log = opLog
+	client.Cid = ck.clientId
 	return client
 }
 

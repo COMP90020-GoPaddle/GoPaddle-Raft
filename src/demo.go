@@ -2,10 +2,6 @@ package main
 
 import (
 	"fmt"
-	"image/color"
-	"strconv"
-	"time"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
@@ -13,6 +9,10 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"image/color"
+	"strconv"
+	"strings"
+	"time"
 
 	"GoPaddle-Raft/application"
 )
@@ -108,8 +108,11 @@ func main() {
 				o.(*widget.Label).Bind(i.(binding.String))
 			})
 		clientId.Resize(fyne.NewSize(160, 40))
+		// start client
+		var client *application.Client = nil
 		connectBtn := widget.NewButton("Connect", func() {
-			clientArray[serverIndex].SetValue(0, "new id")
+			client = manager.StartClient() //在哪close?
+			clientArray[serverIndex].SetValue(0, strconv.Itoa(int(client.Cid)))
 		})
 		connectBtn.Resize(fyne.NewSize(120, 40))
 		commands := widget.NewTextGridFromString(clientConsoleArray[serverIndex])
@@ -120,10 +123,16 @@ func main() {
 		input := widget.NewEntry()
 		input.SetPlaceHolder("Enter text...")
 		input.Resize(fyne.NewSize(300, 40))
+		var rsp = ""
+		responseText := binding.NewString()
 		getBtn := widget.NewButton("Get", func() {
 			fmt.Println("Get " + input.Text)
+			rsp = client.Get(manager.Cfg, input.Text)
+			fmt.Println("Get Success:" + rsp)
+			str, _ := responseText.Get()
+			responseText.Set(str + rsp + "\n")
 			clientConsoleArray[serverIndex] += "Get " + input.Text + "\n"
-			fmt.Println(clientConsoleArray[serverIndex])
+			fmt.Println("ClientConsoleBuffer: " + clientConsoleArray[serverIndex])
 			input.SetPlaceHolder("Enter text...")
 			input.SetText("")
 			commands.SetText(clientConsoleArray[serverIndex])
@@ -131,13 +140,16 @@ func main() {
 		})
 		getBtn.Resize(fyne.NewSize(120, 40))
 		putBtn := widget.NewButton("Put", func() {
+			fmt.Println("Put " + input.Text)
 			clientConsoleArray[serverIndex] += "Put " + input.Text + "\n"
+			s := strings.Split(input.Text, ",")
+			client.Put(manager.Cfg, s[0], s[1])
+			fmt.Println("ClientConsoleBuffer: " + clientConsoleArray[serverIndex])
 			input.SetPlaceHolder("Enter text...")
 			input.SetText("")
 			commands.SetText(clientConsoleArray[serverIndex])
 			commandsScroll.ScrollToBottom()
 		})
-		responseText := binding.NewString()
 		response := widget.NewEntryWithData(responseText)
 		responseScroll := container.NewScroll(response)
 		responseScroll.Resize(fyne.NewSize(300, 150))
@@ -160,13 +172,16 @@ func main() {
 		clientContainer.Add(responseScroll)
 		w3.SetContent(clientContainer)
 		w3.Show()
-		go func() {
-			for {
-				time.Sleep(5000 * time.Millisecond)
-				str, _ := responseText.Get()
-				responseText.Set(str + "new line\n")
-			}
-		}()
+		//go func() {
+		//	for {
+		//		time.Sleep(5000 * time.Millisecond)
+		//		str, _ := responseText.Get()
+		//		if str != "" {
+		//			responseText.Set(str + "new line\n")/
+		//		}
+		//
+		//	}
+		//}()
 	})
 
 	partitionBtn := widget.NewButton("Make Partition", func() {
@@ -212,7 +227,9 @@ func main() {
 
 		//unchanged
 		labels := []string{"State", "currentTerm", "votedFor", "commitIndex", "lastApplied"}
-		values := make([]binding.ExternalStringList, num+1)
+		serverInfos := make([]binding.ExternalStringList, num+1)
+		serverLogEntries := make([]binding.ExternalStringList, num+1)
+		serverApplies := make([]binding.ExternalStringList, num+1)
 
 		// test part
 		go func(cfg *application.Config) {
@@ -231,7 +248,9 @@ func main() {
 			serverArray[index] = "raft server" + strconv.Itoa(index)
 
 			// Server API: since index start from 1, so for kvservers: index-1
-			values[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
+			serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo // init server info binding
+			serverLogEntries[index] = manager.Cfg.Kvservers[index-1].Rf.ServerLog
+			serverApplies[index] = manager.Cfg.Kvservers[index-1].Rf.ServerApply
 
 			text1 := canvas.NewText("Raft Server No."+strconv.Itoa(index), color.White)
 			text1.TextSize = 20
@@ -247,7 +266,7 @@ func main() {
 					o.(*widget.Label).SetText(labels[i])
 				})
 
-			valueList := widget.NewListWithData(values[index],
+			valueList := widget.NewListWithData(serverInfos[index],
 				func() fyne.CanvasObject {
 					return widget.NewLabel("template")
 				},
@@ -264,8 +283,18 @@ func main() {
 			rect1.StrokeColor = color.White
 			rect1.StrokeWidth = 1
 			rect1.FillColor = color.Transparent
-			logEntries := widget.NewTextGrid()
-			logEntries.SetText("Tiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\n")
+
+			logEntries := widget.NewListWithData(serverLogEntries[index],
+				func() fyne.CanvasObject {
+					return widget.NewLabel("template")
+				},
+				func(i binding.DataItem, o fyne.CanvasObject) {
+					o.(*widget.Label).Bind(i.(binding.String))
+				})
+
+			//logEntries := widget.NewTextGrid()
+			//logEntries.SetText("Tiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\n")
+
 			logScroll := container.NewScroll(logEntries)
 			logScroll.Resize(fyne.NewSize(200, 80))
 			logScroll.ScrollToBottom()
@@ -277,8 +306,16 @@ func main() {
 			rect2.StrokeColor = color.White
 			rect2.StrokeWidth = 1
 			rect2.FillColor = color.Transparent
-			applies := widget.NewTextGrid()
-			applies.SetText("Sleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\n")
+
+			//applies := widget.NewTextGrid()
+			//applies.SetText("Sleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\n")
+			applies := widget.NewListWithData(serverApplies[index],
+				func() fyne.CanvasObject {
+					return widget.NewLabel("template")
+				},
+				func(i binding.DataItem, o fyne.CanvasObject) {
+					o.(*widget.Label).Bind(i.(binding.String))
+				})
 			applyScroll := container.NewScroll(applies)
 			applyScroll.Resize(fyne.NewSize(200, 80))
 			applyScroll.ScrollToBottom()
@@ -303,10 +340,18 @@ func main() {
 					// Server API: shutdown current server
 					manager.ShutDown(index - 1)
 					btn2Array[index].SetText("Restart")
+					fmt.Printf("Restart: -----------------%v,  index: %d\n", &serverInfos[index], index)
 				} else if btn2Array[index].Text == "Restart" {
 					// Server API: restart current server
 					manager.Restart(index - 1)
+					time.Sleep(2 * time.Second)
+					ss, _ := manager.Cfg.Kvservers[index-1].Rf.ServerInfo.Get()
+					fmt.Println("Restart--before serverInfos[index]=: -----------------,  info: ", ss)
+					serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
+					ss1, _ := serverInfos[index].Get()
+					fmt.Println("Restart--after serverInfos[index]=: -----------------,  info: ", ss1)
 					btn2Array[index].SetText("Reconnect")
+					//TODO valueList
 				} else {
 					// Server API: reconnect current server
 					manager.Reconnect(index - 1)

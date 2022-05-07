@@ -50,8 +50,9 @@ type Raft struct {
 
 	// Relevant server info in a string list
 	//ServerInfo []string
-	ServerInfo binding.ExternalStringList
-	InfoCh     chan bool
+	ServerInfo  binding.ExternalStringList
+	ServerLog   binding.ExternalStringList
+	ServerApply binding.ExternalStringList
 }
 
 type LogEntry struct {

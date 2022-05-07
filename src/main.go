@@ -46,40 +46,47 @@ package main
 // 	manager.ShowServerInfo()
 
 // 	client := manager.StartClient()
+	//cfg := application.Make_config(num, true, -1)
+	//showServerInfo(cfg)
+	//opLog := &OpLog{}
+	//ck := cfg.MakeClient(cfg.All())
+	//var operation string
+	//for operation != "exit" {
+	//fmt.Println("Enter your command: ")
+	//fmt.Scanln(&operation)
+  //var key, value string
+	//if operation == "put" {
+		//fmt.Println("Enter key: ")
+		//fmt.Scanln(&key)
+		//fmt.Println("Enter value: ")
+		//fmt.Scanln(&value)
+		//client.Put(manager.Cfg, key, value)
+	//}
+	//if operation == "get" {
+		//fmt.Println("Enter key: ")
+		//fmt.Scanln(&key)
+		//client.Get(manager.Cfg, key)
+		//fmt.Println("Client log:", client.Log)
+	//}
+		//if operation == "show" {
+		//	fmt.Println("Database: ")
+		//	for _, server := range cfg.Kvservers {
+		//		for k, v := range server.KvStore {
+		//			fmt.Printf("%v : %v \n", k, v)
+		//		}
+		//	}
+		//}
+	//if operation == "log" {
+		//fmt.Printf("log: %v\n", manager.Cfg.Kvservers[0].Rf.ServerLog)
+	//}
 
-// 	//cfg := application.Make_config(num, true, -1)
-// 	//showServerInfo(cfg)
-// 	//opLog := &OpLog{}
-// 	//ck := cfg.MakeClient(cfg.All())
-// 	var operation string
-// 	for operation != "exit" {
-// 		fmt.Println("Enter your command: ")
-// 		fmt.Scanln(&operation)
-// 		var key, value string
-// 		if operation == "put" {
-// 			fmt.Println("Enter key: ")
-// 			fmt.Scanln(&key)
-// 			fmt.Println("Enter value: ")
-// 			fmt.Scanln(&value)
-// 			client.Put(manager.Cfg, key, value)
-// 		}
-// 		if operation == "get" {
-// 			fmt.Println("Enter key: ")
-// 			fmt.Scanln(&key)
-// 			client.Get(manager.Cfg, key)
-// 			fmt.Println("Client log:", client.Log)
-// 		}
-// 		//if operation == "show" {
-// 		//	fmt.Println("Database: ")
-// 		//	for _, server := range cfg.Kvservers {
-// 		//		for k, v := range server.KvStore {
-// 		//			fmt.Printf("%v : %v \n", k, v)
-// 		//		}
-// 		//	}
-// 		//}
-// 		if operation == "info" {
-// 			manager.ShowServerInfo()
-// 		}
+	//if operation == "apply" {
+		//fmt.Printf("apply: %v\n", manager.Cfg.Kvservers[0].Rf.ServerLog)
+	//}
+
+	//if operation == "info" {
+		//manager.ShowServerInfo()
+	//}
 
 // 		if operation == "shutdown" {
 // 			var serverid string

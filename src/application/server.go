@@ -54,6 +54,8 @@ type KVServer struct {
 	kvStore    map[string]string
 	requestMap map[int64]int
 	dispatcher map[int]chan Notification
+
+	disconn bool // record where it's been disconnected
 }
 
 func (kv *KVServer) ShowDB() map[string]string {

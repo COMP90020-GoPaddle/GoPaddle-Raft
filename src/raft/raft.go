@@ -4,6 +4,8 @@ import (
 	"GoPaddle-Raft/labgob"
 	"GoPaddle-Raft/labrpc"
 	"bytes"
+	"fmt"
+	"fyne.io/fyne/v2/data/binding"
 	"math/rand"
 	"strconv"
 	"sync"
@@ -358,6 +360,8 @@ func (rf *Raft) persist() {
 	e.Encode(rf.CurrentTerm)
 	e.Encode(rf.VotedFor)
 	e.Encode(rf.log)
+	// try save serverlog in persistent state
+	//e.Encode(rf.ServerLog)
 	data := w.Bytes()
 	rf.persister.SaveRaftState(data)
 	DPrintf("[persist] raft: %d || currentTerm: %d || votedFor: %d || log len: %d\n", rf.Me, rf.CurrentTerm, rf.VotedFor, len(rf.log))
@@ -382,9 +386,11 @@ func (rf *Raft) readPersist(data []byte) {
 		rf.CurrentTerm = currentTerm
 		rf.VotedFor = votedFor
 		rf.log = log
-
 		//update server info
+		fmt.Println("readPersist success! -----", rf.CurrentTerm, rf.VotedFor, rf.log)
 		rf.updateServerInfo()
+		ss, _ := rf.ServerInfo.Get()
+		fmt.Println("updateServerInfo success! ------, serverInfo:", ss)
 		//rf.InfoCh <- true
 	}
 
@@ -550,6 +556,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			newEntries := make([]LogEntry, len(args.Entries[conflictIndex:]))
 			copy(newEntries, args.Entries[conflictIndex:])
 			rf.log = append(rf.log[:nextIndex+conflictIndex], newEntries...)
+			//fmt.Printf("Rf log after append: %v\n", rf.log)
+			fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries))
+			// Serverlog update
+			rf.updateServerLogs(fmt.Sprintf("%v\n", newEntries))
 			//rf.log = newLog
 			rf.persist()
 			rf.updateConsoleLogs(DLog("Raft Server[%v]: Receive %v Rrom Leader | Log Length: %d",
@@ -613,10 +623,10 @@ func (rf *Raft) applyEntries() {
 					CommandIndex: i,
 				}
 				rf.LastApplied = i
-
 				// update server info
 				rf.updateServerInfo()
-				//rf.InfoCh <- true
+				// update server apply command
+				rf.updateServerApplies(applyMsg.CommandValid, applyMsg.Command, applyMsg.CommandIndex)
 
 				DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tapply command %v of index %d and term %d to applyCh\n",
 					rf.Me, rf.CurrentTerm, rf.State, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
@@ -673,6 +683,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if term, isLeader = rf.GetState(); isLeader {
 		rf.mu.Lock()
 		rf.log = append(rf.log, LogEntry{Command: command, Term: rf.CurrentTerm})
+		rf.updateServerLogs(fmt.Sprintf("%v", LogEntry{Command: command, Term: rf.CurrentTerm}))
 		rf.persist()
 		rf.matchIndex[rf.Me] = len(rf.log) - 1
 		index = len(rf.log) - 1
@@ -714,6 +725,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.electionTimerReset()
 
 	rf.log = append(rf.log, LogEntry{Term: 0})
+
 	rf.nextIndex = make([]int, len(rf.peers))
 	rf.matchIndex = make([]int, len(rf.peers))
 	rf.CommitIndex = 0
@@ -723,9 +735,17 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	//rf.InfoCh = make(chan bool)
 
 	info := make([]string, 5)
-	rf.ServerInfo = binding.BindStringList(&info)
 
-	rf.updateServerInfo()
+	// init server log
+	rf.ServerLog = binding.BindStringList(
+		&[]string{},
+	)
+
+	// init server apply
+	rf.ServerApply = binding.BindStringList(
+		&[]string{},
+	)
+
 	//rf.InfoCh <- true
 
 	rf.applyCond = sync.NewCond(&rf.mu)
@@ -733,7 +753,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.leaderCond = sync.NewCond(&rf.mu)
 
 	// bootstrap from a persisted State
+	rf.ServerInfo = binding.BindStringList(&info)
 	rf.readPersist(persister.ReadRaftState())
+	rf.updateServerInfo()
 
 	DPrintf("Starting raft %d\n", me)
 	// do correspond action according to the channel
@@ -753,43 +775,64 @@ func (rf *Raft) updateServerInfo() {
 	case 0:
 		err := rf.ServerInfo.SetValue(0, "Follower")
 		if err != nil {
-			return
+			fmt.Println("err state0")
 		}
 	case 1:
 		err := rf.ServerInfo.SetValue(0, "Candidate")
 		if err != nil {
-			return
+			fmt.Println("err state1")
 		}
 	case 2:
 		err := rf.ServerInfo.SetValue(0, "Leader")
 		if err != nil {
-			return
+			fmt.Println("err state2")
 		}
 	}
 	err1 := rf.ServerInfo.SetValue(1, strconv.Itoa(rf.CurrentTerm))
 	if err1 != nil {
-		return
+		fmt.Println(err1)
 	}
 	err2 := rf.ServerInfo.SetValue(2, strconv.Itoa(rf.VotedFor+1))
 	if err2 != nil {
-		return
+		fmt.Println(err2)
 	}
 	err3 := rf.ServerInfo.SetValue(3, strconv.Itoa(rf.CommitIndex))
 	if err3 != nil {
-		return
+		fmt.Println(err3)
 	}
 	err4 := rf.ServerInfo.SetValue(4, strconv.Itoa(rf.LastApplied))
 	if err4 != nil {
-		return
+		fmt.Println(err4)
 	}
 
+	//if rf.Me == 4 {
+	//	v0, _ := rf.ServerInfo.GetValue(0)
+	//	v1, _ := rf.ServerInfo.GetValue(1)
+	//	v2, _ := rf.ServerInfo.GetValue(2)
+	//	v3, _ := rf.ServerInfo.GetValue(3)
+	//	v4, _ := rf.ServerInfo.GetValue(4)
+	//	fmt.Println("updateServerInfo", v0, v1, v2, v3, v4)
+	//}
 	//err := rf.ServerInfo.Reload()
 	//if err != nil {
 	//	return
 	//}
 }
 
+
 func (rf *Raft) updateConsoleLogs(newLog string) {
 	// rf.consoleLogs = append(rf.consoleLogs, newLog+"\n")
 	rf.consoleLogs.Append(newLog + "\n")
+}
+
+func (rf *Raft) updateServerLogs(log string) {
+	rf.ServerLog.Append(log + "\n")
+	//results, _ := rf.ServerLog.Get()
+	//fmt.Printf("Demo log: %v\n", results)
+}
+
+func (rf *Raft) updateServerApplies(a ...interface{}) {
+	rf.ServerApply.Append(fmt.Sprintf("%v: [%v] commit index: [%v]\n", a...))
+	//results, _ := rf.ServerApply.Get()
+	//fmt.Printf("Demo Apply: %v\n", results)
 }

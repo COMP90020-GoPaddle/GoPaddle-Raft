@@ -40,9 +40,18 @@ func (cfg *Config) ConnectAll() {
 	}
 }
 
+func (cfg *Config) disconnect(i int, from []int) {
+	cfg.mu.Lock()
+	defer cfg.mu.Unlock()
+	cfg.disconnectUnlocked(i, from)
+}
+
 func (cfg *Config) All() []int {
 	all := make([]int, cfg.n)
 	for i := 0; i < cfg.n; i++ {
+		if cfg.Kvservers[i] != nil && cfg.Kvservers[i].disconn {
+			continue
+		}
 		all[i] = i
 	}
 	return all
@@ -159,6 +168,7 @@ type Config struct {
 	maxraftstate int
 	start        time.Time // time at which make_config() was called
 	// begin()/end() statistics
+
 	t0             time.Time // time at which test_test.go called cfg.begin()
 	rpcs0          int       // rpcTotal() at start of test
 	ops            int32     // number of clerk get/put/append method calls
