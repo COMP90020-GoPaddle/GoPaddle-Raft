@@ -202,9 +202,9 @@ func (client *Client) Get(cfg *Config, key string) string {
 	return v
 }
 
-func (client *Client) Put(cfg *Config, key string, value string) {
+func (client *Client) Put(cfg *Config, key string, value string) string {
 	start := time.Now()
-	client.ck.Put(key, value)
+	v := client.ck.Put(key, value)
 	end := time.Now()
 	cfg.op()
 	if client.Log != nil {
@@ -216,6 +216,7 @@ func (client *Client) Put(cfg *Config, key string, value string) {
 			ClientId: client.ck.clientId,
 		})
 	}
+	return v
 }
 
 func (client *Client) Append(cfg *Config, key string, value string) {

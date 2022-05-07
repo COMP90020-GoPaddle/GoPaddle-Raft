@@ -144,9 +144,10 @@ func main() {
 		getBtn.Resize(fyne.NewSize(120, 40))
 		putBtn := widget.NewButton("Put", func() {
 			fmt.Println("Put " + input.Text)
-			clientConsoleArray[serverIndex] += "Put " + input.Text + "\n"
+			clientConsoleArray[serverIndex] += "Put " + input.Text
 			s := strings.Split(input.Text, ",")
-			client.Put(manager.Cfg, s[0], s[1])
+			rsp := client.Put(manager.Cfg, s[0], s[1])
+			clientConsoleArray[serverIndex] += "  " + rsp + "\n"
 			fmt.Println("ClientConsoleBuffer: " + clientConsoleArray[serverIndex])
 			input.SetPlaceHolder("Enter text...")
 			input.SetText("")
