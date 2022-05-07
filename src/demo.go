@@ -2,19 +2,17 @@ package main
 
 import (
 	"fmt"
-	"fyne.io/fyne/v2/theme"
-	"image/color"
-	"strconv"
-	"strings"
-	"time"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"image/color"
+	"strconv"
+	"strings"
 
 	"GoPaddle-Raft/application"
 )
@@ -364,17 +362,17 @@ func main() {
 					// Server API: shutdown current server
 					manager.ShutDown(index - 1)
 					btn2Array[index].SetText("Restart")
-					fmt.Printf("Restart: -----------------%v,  index: %d\n", &serverInfos[index], index)
 				} else if btn2Array[index].Text == "Restart" {
 					// Server API: restart current server
 					manager.Restart(index - 1)
-					time.Sleep(2 * time.Second)
-					ss, _ := manager.Cfg.Kvservers[index-1].Rf.ServerInfo.Get()
-					fmt.Println("Restart--before serverInfos[index]=: -----------------,  info: ", ss)
 					serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
-					ss1, _ := serverInfos[index].Get()
-					fmt.Println("Restart--after serverInfos[index]=: -----------------,  info: ", ss1)
+					serverLogEntries[index] = manager.Cfg.Kvservers[index-1].Rf.ServerLog
+					serverDatabases[index] = manager.Cfg.Kvservers[index-1].ServerStore
+
 					serverContainer.Remove(valueList)
+					serverContainer.Remove(logEntries)
+					serverContainer.Remove(applies)
+
 					newValueList := widget.NewListWithData(serverInfos[index],
 						func() fyne.CanvasObject {
 							return widget.NewLabel("template")
@@ -384,10 +382,35 @@ func main() {
 						})
 					newValueList.Resize(fyne.NewSize(60, 200))
 					newValueList.Move(fyne.NewPos(float32(180+(index-1)*230), 65))
+
+					newLogEntries := widget.NewListWithData(serverLogEntries[index],
+						func() fyne.CanvasObject {
+							return widget.NewLabel(templateStr)
+						},
+						func(i binding.DataItem, o fyne.CanvasObject) {
+							o.(*widget.Label).Bind(i.(binding.String))
+						})
+					newLogEntries.Resize(fyne.NewSize(200, 80))
+					newLogEntries.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
+
+					newApplies := widget.NewListWithData(serverDatabases[index],
+						func() fyne.CanvasObject {
+							return widget.NewLabel(templateStr)
+						},
+						func(i binding.DataItem, o fyne.CanvasObject) {
+							o.(*widget.Label).Bind(i.(binding.String))
+						})
+					newApplies.Resize(fyne.NewSize(200, 80))
+					newApplies.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
+
 					valueList = newValueList
+					logEntries = newLogEntries
+					applies = newApplies
+
 					serverContainer.Add(valueList)
+					serverContainer.Add(logEntries)
+					serverContainer.Add(applies)
 					btn2Array[index].SetText("Reconnect")
-					//TODO valueList
 				} else {
 					// Server API: reconnect current server
 					manager.Reconnect(index - 1)
