@@ -556,9 +556,14 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			copy(newEntries, args.Entries[conflictIndex:])
 			rf.log = append(rf.log[:nextIndex+conflictIndex], newEntries...)
 			//fmt.Printf("Rf log after append: %v\n", rf.log)
-			fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries))
-			// Serverlog update
-			rf.updateServerLogs(fmt.Sprintf("%v\n", newEntries))
+
+			// update server logs one by one
+			for i := 0; i < len(args.Entries[conflictIndex:]); i++ {
+				fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries[i]))
+				fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
+				// Serverlog update
+				rf.updateServerLogs(newEntries[i])
+			}
 			//rf.log = newLog
 			rf.persist()
 			rf.updateConsoleLogs(DLog("Raft Server[%v]: Receive %v Rrom Leader | Log Length: %d",
@@ -625,7 +630,7 @@ func (rf *Raft) applyEntries() {
 				// update server info
 				rf.updateServerInfo()
 				// update server apply command
-				rf.updateServerApplies(applyMsg.CommandValid, applyMsg.Command, applyMsg.CommandIndex)
+				//rf.updateServerApplies(applyMsg.CommandValid, applyMsg.Command, applyMsg.CommandIndex)
 
 				DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tapply command %v of index %d and term %d to applyCh\n",
 					rf.Me, rf.CurrentTerm, rf.State, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
@@ -682,7 +687,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if term, isLeader = rf.GetState(); isLeader {
 		rf.mu.Lock()
 		rf.log = append(rf.log, LogEntry{Command: command, Term: rf.CurrentTerm})
-		rf.updateServerLogs(fmt.Sprintf("%v", LogEntry{Command: command, Term: rf.CurrentTerm}))
+		rf.updateServerLogs(LogEntry{Command: command, Term: rf.CurrentTerm})
 		rf.persist()
 		rf.matchIndex[rf.Me] = len(rf.log) - 1
 		index = len(rf.log) - 1
@@ -741,9 +746,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	)
 
 	// init server apply
-	rf.ServerApply = binding.BindStringList(
-		&[]string{},
-	)
+	//rf.ServerApply = binding.BindStringList(
+	//	&[]string{},
+	//)
 
 	//rf.InfoCh <- true
 
@@ -823,14 +828,15 @@ func (rf *Raft) updateConsoleLogs(newLog string) {
 	rf.consoleLogs.Append(newLog + "\n")
 }
 
-func (rf *Raft) updateServerLogs(log string) {
-	rf.ServerLog.Append(log + "\n")
+func (rf *Raft) updateServerLogs(newEntry LogEntry) {
+	entryStr := logEntryToStr(newEntry)
+	rf.ServerLog.Append(entryStr + "\n")
 	//results, _ := rf.ServerLog.Get()
 	//fmt.Printf("Demo log: %v\n", results)
 }
 
-func (rf *Raft) updateServerApplies(a ...interface{}) {
-	rf.ServerApply.Append(fmt.Sprintf("%v: [%v] commit index: [%v]\n", a...))
-	//results, _ := rf.ServerApply.Get()
-	//fmt.Printf("Demo Apply: %v\n", results)
-}
+//func (rf *Raft) updateServerApplies(a ...interface{}) {
+//	rf.ServerApply.Append(fmt.Sprintf("%v: [%v] commit index: [%v]\n", a...))
+//	//results, _ := rf.ServerApply.Get()
+//	//fmt.Printf("Demo Apply: %v\n", results)
+//}

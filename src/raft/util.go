@@ -3,6 +3,7 @@ package raft
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -25,4 +26,19 @@ func min(a, b int) int {
 		return b
 	}
 	return a
+}
+
+func logEntryToStr(newEntry LogEntry) string {
+	rowCommStr := fmt.Sprintf("%v", newEntry.Command)
+	split := strings.Split(rowCommStr[1:len(rowCommStr)-1], " ")
+	var result string
+	if len(split) == 4 {
+		result = fmt.Sprintf("T:[%v] K:[%v] V:[] O:[%v] CID:[%v] ReqID:[%v]\n", newEntry.Term,
+			split[0], split[1], split[2], split[3])
+	} else if len(split) == 5 {
+		result = fmt.Sprintf("T:[%v] K:[%v] V:[%v] Oper:[%v] CID:[%v] ReqID:[%v]\n", newEntry.Term,
+			split[0], split[1], split[2], split[3], split[4])
+	}
+
+	return result
 }
