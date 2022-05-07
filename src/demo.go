@@ -54,6 +54,7 @@ func main() {
 	w2.Resize(fyne.NewSize(220, 240))
 	w2.SetFixedSize(true)
 
+	templateStr := "this is a template string to simulate a very long log entry or console output that might appear, if this is not long enough then make it longer :)"
 	rect := canvas.NewRectangle(color.White)
 	rect.Resize(fyne.NewSize(1150, 750))
 	rect.StrokeColor = color.White
@@ -176,8 +177,7 @@ func main() {
 			commandsScroll.ScrollToBottom()
 		})
 		response := widget.NewEntryWithData(responseText)
-		responseScroll := container.NewScroll(response)
-		responseScroll.Resize(fyne.NewSize(300, 150))
+		response.Resize(fyne.NewSize(300, 150))
 		putBtn.Resize(fyne.NewSize(120, 40))
 		clientLabel.Move(fyne.NewPos(35, 35))
 		clientId.Move(fyne.NewPos(125, 35))
@@ -186,7 +186,7 @@ func main() {
 		getBtn.Move(fyne.NewPos(60, 200))
 		putBtn.Move(fyne.NewPos(220, 200))
 		commandsScroll.Move(fyne.NewPos(50, 250))
-		responseScroll.Move(fyne.NewPos(50, 410))
+		response.Move(fyne.NewPos(50, 410))
 		clientContainer.Add(clientLabel)
 		clientContainer.Add(clientId)
 		clientContainer.Add(connectBtn)
@@ -194,7 +194,7 @@ func main() {
 		clientContainer.Add(getBtn)
 		clientContainer.Add(putBtn)
 		clientContainer.Add(commandsScroll)
-		clientContainer.Add(responseScroll)
+		clientContainer.Add(response)
 		w3.SetContent(clientContainer)
 		w3.Show()
 		w3.SetCloseIntercept(func() {
@@ -203,16 +203,6 @@ func main() {
 			}
 			w3.Close()
 		})
-		//go func() {
-		//	for {
-		//		time.Sleep(5000 * time.Millisecond)
-		//		str, _ := responseText.Get()
-		//		if str != "" {
-		//			responseText.Set(str + "new line\n")/
-		//		}
-		//
-		//	}
-		//}()
 	})
 
 	partitionBtn := widget.NewButton("Make Partition", func() {
@@ -229,8 +219,7 @@ func main() {
 
 	btnArray[2] = partitionBtn
 	exitBtn := widget.NewButton("Exit", func() {
-		w.Close()
-		w2.Close()
+		a.Quit()
 	})
 
 	// w.close by click x
@@ -248,7 +237,6 @@ func main() {
 
 	//w2
 	label := canvas.NewText("How many server to create?", color.White)
-	// image := canvas.NewImageFromFile("./logo.png")
 	selectNum := widget.NewSelect([]string{"2", "3", "4", "5"}, nil)
 	reliable := widget.NewCheck("Reliable Network", nil)
 	confirmBtn := widget.NewButton("Confirm", func() {
@@ -312,7 +300,7 @@ func main() {
 
 			valueList := widget.NewListWithData(serverInfos[index],
 				func() fyne.CanvasObject {
-					return widget.NewLabel("template")
+					return widget.NewLabel("follower")
 				},
 				func(i binding.DataItem, o fyne.CanvasObject) {
 					o.(*widget.Label).Bind(i.(binding.String))
@@ -330,18 +318,12 @@ func main() {
 
 			logEntries := widget.NewListWithData(serverLogEntries[index],
 				func() fyne.CanvasObject {
-					return widget.NewLabel("template")
+					return widget.NewLabel(templateStr)
 				},
 				func(i binding.DataItem, o fyne.CanvasObject) {
 					o.(*widget.Label).Bind(i.(binding.String))
 				})
-
-			//logEntries := widget.NewTextGrid()
-			//logEntries.SetText("Tiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\nTiring......\n")
-
-			logScroll := container.NewScroll(logEntries)
-			logScroll.Resize(fyne.NewSize(200, 80))
-			logScroll.ScrollToBottom()
+			logEntries.Resize(fyne.NewSize(200, 80))
 			text3 := canvas.NewText("KV Database", color.White)
 			text3.TextSize = 10
 			text3.Alignment = fyne.TextAlignCenter
@@ -351,18 +333,15 @@ func main() {
 			rect2.StrokeWidth = 1
 			rect2.FillColor = color.Transparent
 
-			//applies := widget.NewTextGrid()
-			//applies.SetText("Sleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\nSleeping......\n")
 			applies := widget.NewListWithData(serverDatabases[index],
 				func() fyne.CanvasObject {
-					return widget.NewLabel("template")
+					return widget.NewLabel(templateStr)
 				},
 				func(i binding.DataItem, o fyne.CanvasObject) {
 					o.(*widget.Label).Bind(i.(binding.String))
 				})
-			applyScroll := container.NewScroll(applies)
-			applyScroll.Resize(fyne.NewSize(200, 80))
-			applyScroll.ScrollToBottom()
+			applies.Resize(fyne.NewSize(200, 80))
+			applies.ScrollToBottom()
 
 			btn1 := widget.NewButton("Disconnect", func() {
 				fmt.Println("should disconnect " + serverArray[index])
@@ -421,20 +400,20 @@ func main() {
 			valueList.Move(fyne.NewPos(float32(180+(index-1)*230), 65))
 			text2.Move(fyne.NewPos(float32(60+(index-1)*230), 260))
 			rect1.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
-			logScroll.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
+			logEntries.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
 			text3.Move(fyne.NewPos(float32(50+(index-1)*230), 360))
 			rect2.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
-			applyScroll.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
+			applies.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
 			btn1.Move(fyne.NewPos(float32(80+(index-1)*230), 680))
 			btn2.Move(fyne.NewPos(float32(80+(index-1)*230), 720))
 			serverContainer.Add(text1)
 			serverContainer.Add(labelList)
 			serverContainer.Add(valueList)
 			serverContainer.Add(text2)
-			serverContainer.Add(logScroll)
+			serverContainer.Add(logEntries)
 			serverContainer.Add(rect1)
 			serverContainer.Add(text3)
-			serverContainer.Add(applyScroll)
+			serverContainer.Add(applies)
 			serverContainer.Add(rect2)
 			serverContainer.Add(btn1)
 			serverContainer.Add(btn2)
@@ -449,17 +428,16 @@ func main() {
 
 		console := widget.NewListWithData(manager.Cfg.ConsoleBinding,
 			func() fyne.CanvasObject {
-				return widget.NewLabel("template")
+				return widget.NewLabel(templateStr)
 			},
 			func(i binding.DataItem, o fyne.CanvasObject) {
 				o.(*widget.Label).Bind(i.(binding.String))
 			})
-		consoleScroll := container.NewScroll(console)
-		consoleScroll.Resize(fyne.NewSize(1100, 180))
-		consoleScroll.Move(fyne.NewPos(50, 480))
-		consoleScroll.ScrollToBottom()
+		console.Resize(fyne.NewSize(1100, 180))
+		console.Move(fyne.NewPos(50, 480))
+		console.ScrollToBottom()
 		serverContainer.Add(rect3)
-		serverContainer.Add(consoleScroll)
+		serverContainer.Add(console)
 		w2.Hide()
 	})
 	clientParamsContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(220, 60)), label, selectNum, reliable, confirmBtn)
