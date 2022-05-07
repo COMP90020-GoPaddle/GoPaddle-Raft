@@ -114,7 +114,7 @@ func main() {
 		// start client
 		var client *application.Client = nil
 		connectBtn := widget.NewButton("Connect", func() {
-			client = manager.StartClient() //在哪close?
+			client = manager.StartClient()
 			clientArray[serverIndex].SetValue(0, strconv.Itoa(int(client.Cid)))
 		})
 		connectBtn.Resize(fyne.NewSize(120, 40))
@@ -176,6 +176,12 @@ func main() {
 		clientContainer.Add(responseScroll)
 		w3.SetContent(clientContainer)
 		w3.Show()
+		w3.SetCloseIntercept(func() {
+			if client != nil {
+				manager.CloseClient(client)
+			}
+			w3.Close()
+		})
 		//go func() {
 		//	for {
 		//		time.Sleep(5000 * time.Millisecond)
@@ -205,6 +211,17 @@ func main() {
 		w.Close()
 		w2.Close()
 	})
+
+	// w.close by click x
+	w.SetCloseIntercept(func() {
+		a.Quit()
+	})
+
+	// w2.close by click x
+	w2.SetCloseIntercept(func() {
+		w2.Hide()
+	})
+
 	controlContainer := container.New(layout.NewGridWrapLayout(fyne.NewSize(240, 80)), layout.NewSpacer(), image, text2, text3, newClusterBtn, newClientBtn, partitionBtn, exitBtn)
 	content := container.New(layout.NewHBoxLayout(), serverContainer, controlContainer)
 

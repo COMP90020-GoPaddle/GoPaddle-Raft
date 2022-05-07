@@ -182,6 +182,7 @@ func (manager *Manager) StartClient() *Client {
 // Call by close client's GUI
 // after calling, drop the client's pointer?
 func (manager *Manager) CloseClient(client *Client) {
+	fmt.Println("Client disconnect: cid:", client.Cid)
 	manager.Cfg.deleteClient(client.ck)
 }
 
