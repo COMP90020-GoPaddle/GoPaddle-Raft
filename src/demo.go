@@ -167,7 +167,8 @@ func main() {
 					rsp := client.Put(manager.Cfg, s[0], s[1])
 					clientConsoleArray[serverIndex] += " " + rsp + "\n"
 				} else {
-					responseText.Set("Invalid command\n")
+					str, _ := responseText.Get()
+					responseText.Set(str + "Invalid command\n")
 					clientConsoleArray[serverIndex] += " Invalid command\n"
 				}
 			}
