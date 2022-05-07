@@ -383,7 +383,10 @@ func (rf *Raft) readPersist(data []byte) {
 		rf.VotedFor = votedFor
 		rf.log = log
 		//update server info
+		fmt.Println("readPersist success! -----", rf.CurrentTerm, rf.VotedFor, rf.log)
 		rf.updateServerInfo()
+		ss, _ := rf.ServerInfo.Get()
+		fmt.Println("updateServerInfo success! ------, serverInfo:", ss)
 		//rf.InfoCh <- true
 	}
 
@@ -552,7 +555,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			//fmt.Printf("Rf log after append: %v\n", rf.log)
 			fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries))
 			// Serverlog update
-			rf.updateServerLogs(fmt.Sprintf("%v", newEntries))
+			rf.updateServerLogs(fmt.Sprintf("%v\n", newEntries))
 			//rf.log = newLog
 			rf.persist()
 			DPrintf("[AppendEntries] raft %d appended entries from leader | log length: %d\n", rf.Me, len(rf.log))
@@ -726,8 +729,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	//rf.InfoCh = make(chan bool)
 
 	info := make([]string, 5)
-	rf.ServerInfo = binding.BindStringList(&info)
-	rf.updateServerInfo()
 
 	// init server log
 	rf.ServerLog = binding.BindStringList(
@@ -746,7 +747,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.leaderCond = sync.NewCond(&rf.mu)
 
 	// bootstrap from a persisted State
+	rf.ServerInfo = binding.BindStringList(&info)
 	rf.readPersist(persister.ReadRaftState())
+	rf.updateServerInfo()
 
 	DPrintf("Starting raft %d\n", me)
 	// do correspond action according to the channel
@@ -766,35 +769,44 @@ func (rf *Raft) updateServerInfo() {
 	case 0:
 		err := rf.ServerInfo.SetValue(0, "Follower")
 		if err != nil {
-			return
+			fmt.Println("err state0")
 		}
 	case 1:
 		err := rf.ServerInfo.SetValue(0, "Candidate")
 		if err != nil {
-			return
+			fmt.Println("err state1")
 		}
 	case 2:
 		err := rf.ServerInfo.SetValue(0, "Leader")
 		if err != nil {
-			return
+			fmt.Println("err state2")
 		}
 	}
 	err1 := rf.ServerInfo.SetValue(1, strconv.Itoa(rf.CurrentTerm))
 	if err1 != nil {
-		return
+		fmt.Println(err1)
 	}
 	err2 := rf.ServerInfo.SetValue(2, strconv.Itoa(rf.VotedFor+1))
 	if err2 != nil {
-		return
+		fmt.Println(err2)
 	}
 	err3 := rf.ServerInfo.SetValue(3, strconv.Itoa(rf.CommitIndex))
 	if err3 != nil {
-		return
+		fmt.Println(err3)
 	}
 	err4 := rf.ServerInfo.SetValue(4, strconv.Itoa(rf.LastApplied))
 	if err4 != nil {
-		return
+		fmt.Println(err4)
 	}
+
+	//if rf.Me == 4 {
+	//	v0, _ := rf.ServerInfo.GetValue(0)
+	//	v1, _ := rf.ServerInfo.GetValue(1)
+	//	v2, _ := rf.ServerInfo.GetValue(2)
+	//	v3, _ := rf.ServerInfo.GetValue(3)
+	//	v4, _ := rf.ServerInfo.GetValue(4)
+	//	fmt.Println("updateServerInfo", v0, v1, v2, v3, v4)
+	//}
 	//err := rf.ServerInfo.Reload()
 	//if err != nil {
 	//	return

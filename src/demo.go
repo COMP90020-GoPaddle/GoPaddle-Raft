@@ -12,6 +12,7 @@ import (
 	"image/color"
 	"strconv"
 	"strings"
+	"time"
 
 	"GoPaddle-Raft/application"
 )
@@ -341,10 +342,18 @@ func main() {
 					// Server API: shutdown current server
 					manager.ShutDown(index - 1)
 					btn2Array[index].SetText("Restart")
+					fmt.Printf("Restart: -----------------%v,  index: %d\n", &serverInfos[index], index)
 				} else if btn2Array[index].Text == "Restart" {
 					// Server API: restart current server
 					manager.Restart(index - 1)
+					time.Sleep(2 * time.Second)
+					ss, _ := manager.Cfg.Kvservers[index-1].Rf.ServerInfo.Get()
+					fmt.Println("Restart--before serverInfos[index]=: -----------------,  info: ", ss)
+					serverInfos[index] = manager.Cfg.Kvservers[index-1].Rf.ServerInfo
+					ss1, _ := serverInfos[index].Get()
+					fmt.Println("Restart--after serverInfos[index]=: -----------------,  info: ", ss1)
 					btn2Array[index].SetText("Reconnect")
+					//TODO valueList
 				} else {
 					// Server API: reconnect current server
 					manager.Reconnect(index - 1)

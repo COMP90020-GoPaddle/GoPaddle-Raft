@@ -47,7 +47,7 @@ func (cfg *Config) disconnect(i int, from []int) {
 func (cfg *Config) All() []int {
 	all := make([]int, cfg.n)
 	for i := 0; i < cfg.n; i++ {
-		if cfg.Kvservers[i].disconn {
+		if cfg.Kvservers[i] != nil && cfg.Kvservers[i].disconn {
 			continue
 		}
 		all[i] = i
