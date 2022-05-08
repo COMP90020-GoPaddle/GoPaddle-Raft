@@ -42,7 +42,7 @@ func (manager *Manager) Disconnect(serverID int) {
 	//}
 	otherServers := make([]int, 0)
 	for j := 0; j < manager.Cfg.n; j++ {
-		if manager.Cfg.Kvservers[j].disconn {
+		if manager.Cfg.Kvservers[j] != nil && manager.Cfg.Kvservers[j].disconn {
 			continue
 		}
 		if j != serverID {
@@ -61,7 +61,7 @@ func (manager *Manager) Restart(serverID int) {
 func (manager *Manager) Reconnect(serverID int) {
 	otherServers := make([]int, 0)
 	for j := 0; j < manager.Cfg.n; j++ {
-		if manager.Cfg.Kvservers[j].disconn {
+		if manager.Cfg.Kvservers[j] != nil && manager.Cfg.Kvservers[j].disconn {
 			continue
 		}
 		if j != serverID {

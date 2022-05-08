@@ -362,6 +362,9 @@ func main() {
 					// Server API: shutdown current server
 					manager.ShutDown(index - 1)
 					btn2Array[index].SetText("Restart")
+					serverContainer.Remove(valueList)
+					serverContainer.Remove(logEntries)
+					serverContainer.Remove(applies)
 				} else if btn2Array[index].Text == "Restart" {
 					// Server API: restart current server
 					manager.Restart(index - 1)
