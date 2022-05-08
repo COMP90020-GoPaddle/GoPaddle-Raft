@@ -48,11 +48,11 @@ func (ck *Clerk) Get(key string) string {
 	DPrintf("Client[%d], Request[%d] Get, Key=%s ", ck.clientId, updatedRequestId, key)
 	cnt := 0
 	for {
-		if cnt > 20 {
+		if cnt >= len(ck.Servers) {
 			ck.timeoutId = updatedRequestId
 			return "Timeout"
 		}
-		savedLeaderId := ck.leaderId
+		savedLeaderId := ck.leaderId % len(ck.Servers)
 		// make a new reply in every loop
 		var reply GetReply
 
@@ -73,7 +73,7 @@ func (ck *Clerk) Get(key string) string {
 		DPrintf("Wrong leader[%d], try another one", savedLeaderId)
 		ck.leaderId = (savedLeaderId + 1) % len(ck.Servers)
 		cnt++
-		time.Sleep(30 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 	}
 }
 
@@ -96,12 +96,12 @@ func (ck *Clerk) PutAppend(key string, value string, op string) string {
 	DPrintf("Client[%d], Request[%d] PutAppend, Key=%s Value=%s", ck.clientId, updatedRequestId, key, value)
 	cnt := 0
 	for {
-		if cnt > 20 {
+		if cnt >= len(ck.Servers) {
 			ck.timeoutId = updatedRequestId
 			DPrintf("%v Timeout", op)
 			return "Timeout"
 		}
-		savedLeaderId := ck.leaderId
+		savedLeaderId := ck.leaderId % len(ck.Servers)
 		// make a new reply in every loop
 		var reply PutAppendReply
 
@@ -119,7 +119,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) string {
 		DPrintf("Wrong leader[%d], try another one", savedLeaderId)
 		ck.leaderId = (savedLeaderId + 1) % len(ck.Servers)
 		cnt++
-		time.Sleep(30 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 	}
 }
 
