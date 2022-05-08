@@ -8,8 +8,7 @@ import (
 )
 
 type Clerk struct {
-	Servers []*labrpc.ClientEnd
-	// You will have to modify this struct.
+	Servers       []*labrpc.ClientEnd
 	leaderId      int
 	clientId      int64
 	lastRequestId int
@@ -27,25 +26,11 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.Servers = servers
 	ck.clientId = makeCid()
-	// ck.
-	// You'll have to add code here.
 	return ck
 }
 
-//
-// fetch the current value for a key.
-// returns "" if the key does not exist.
-// keeps trying forever in the face of all other errors.
-//
-// you can send an RPC with code like this:
-// ok := ck.servers[i].Call("KVServer.Get", &args, &reply)
-//
-// the types of args and reply (including whether they are pointers)
-// must match the declared types of the RPC handler function's
-// arguments. and reply must be passed as a pointer.
-//
+// Get method, it will call RPC Get function in the server
 func (ck *Clerk) Get(key string) string {
-	// You will have to modify this function.
 	// requestId ready to update
 	updatedRequestId := ck.lastRequestId + 1
 
@@ -85,18 +70,8 @@ func (ck *Clerk) Get(key string) string {
 	}
 }
 
-//
-// shared by Put and Append.
-//
-// you can send an RPC with code like this:
-// ok := ck.servers[i].Call("KVServer.PutAppend", &args, &reply)
-//
-// the types of args and reply (including whether they are pointers)
-// must match the declared types of the RPC handler function's
-// arguments. and reply must be passed as a pointer.
-//
+//	Shared by Put and Append, it will call RPC PutAppend function in the server
 func (ck *Clerk) PutAppend(key string, value string, op string) string {
-	// You will have to modify this function.
 	// requestId ready to update
 	updatedRequestId := ck.lastRequestId + 1
 	args := PutAppendArgs{
@@ -135,9 +110,12 @@ func (ck *Clerk) PutAppend(key string, value string, op string) string {
 	}
 }
 
+// Put method, will call PutAppends
 func (ck *Clerk) Put(key string, value string) string {
 	return ck.PutAppend(key, value, "Put")
 }
+
+// Append method, will call PutAppend
 func (ck *Clerk) Append(key string, value string) string {
 	return ck.PutAppend(key, value, "Append")
 }

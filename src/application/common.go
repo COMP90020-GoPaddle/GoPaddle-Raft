@@ -1,5 +1,6 @@
 package application
 
+//  Err reply for client
 const (
 	OK             = "OK"
 	ErrNoKey       = "ErrNoKey"
@@ -8,29 +9,30 @@ const (
 
 type Err string
 
-// Put or Append
+// Put or Append Args
 type PutAppendArgs struct {
 	Key   string
 	Value string
 	Op    string // "Put" or "Append"
-	// You'll have to add definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
 	ClientId  int64
 	RequestId int
 }
 
+//  Put or Append Reply
 type PutAppendReply struct {
 	Err Err
 }
 
+//  Get Args
 type GetArgs struct {
-	Key string
-	// You'll have to add definitions here.
+	Key       string
 	ClientId  int64
 	RequestId int
 }
 
+//  Get Args
 type GetReply struct {
 	Err   Err
 	Value string

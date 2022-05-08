@@ -15,7 +15,6 @@ import (
 )
 
 const Debug = true
-const Demo = true
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
 	if Debug {
@@ -30,7 +29,6 @@ type Notification struct {
 }
 
 type Op struct {
-	// Your definitions here.
 	// Field names must start with capital letters,
 	// otherwise RPC will break.
 	Key       string
@@ -41,16 +39,14 @@ type Op struct {
 }
 
 type KVServer struct {
-	mu           sync.Mutex
-	me           int // the id of current server
-	Rf           *raft.Raft
-	applyCh      chan raft.ApplyMsg
-	consoleLogCh chan string
-	dead         int32 // set by Kill()
+	mu      sync.Mutex
+	me      int // the id of current server
+	Rf      *raft.Raft
+	applyCh chan raft.ApplyMsg
+	dead    int32 // set by Kill()
 
 	maxraftstate int // snapshot if log grows this big
 
-	// Your definitions here.
 	kvStore    map[string]string
 	requestMap map[int64]int
 	dispatcher map[int]chan Notification
@@ -59,13 +55,13 @@ type KVServer struct {
 	ServerStore binding.ExternalStringList
 }
 
+// show kv store of one server
 func (kv *KVServer) ShowDB() map[string]string {
 	return kv.kvStore
 }
 
 // RPC Get
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
-	// Your code here.
 	operation := Op{
 		Key:       args.Key,
 		Name:      "Get",
@@ -73,7 +69,6 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 		RequestId: args.RequestId,
 	}
 	DPrintf("Client[%v] wants to Get %v from %v", args.ClientId, args.Key, kv.me)
-	fmt.Printf("Client[%v] wants to Get %v from %v\n", args.ClientId, args.Key, kv.me)
 
 	// Return True -> Get request fails
 	if kv.waitRaft(operation) {
@@ -101,7 +96,6 @@ func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 
 // RPC PutAppend
 func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
-	// Your code here.
 	operation := Op{
 		Key:       args.Key,
 		Value:     args.Value,
@@ -117,6 +111,7 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	}
 }
 
+// Check whether the requests are duplicate compared to the records
 func (kv *KVServer) isDuplicate(clientId int64, requestId int) bool {
 	oldRequestId, ok := kv.requestMap[clientId]
 
@@ -130,7 +125,7 @@ func (kv *KVServer) isDuplicate(clientId int64, requestId int) bool {
 	return true
 }
 
-// Send operation tp raft and wait
+// Send operation to raft and wait
 func (kv *KVServer) waitRaft(operation Op) bool {
 	// Send to raft
 	index, _, isLeader := kv.Rf.Start(operation)
@@ -174,16 +169,6 @@ func (kv *KVServer) waitRaft(operation Op) bool {
 	return wrongLeader
 }
 
-//
-// the tester calls Kill() when a KVServer instance won't
-// be needed again. for your convenience, we supply
-// code to set rf.dead (without needing a lock),
-// and a killed() method to test rf.dead in
-// long-running loops. you can also add your own
-// code to Kill(). you're not required to do anything
-// about this, but it may be convenient (for example)
-// to suppress debug output from a Kill()ed instance.
-//
 func (kv *KVServer) Kill() {
 	atomic.StoreInt32(&kv.dead, 1)
 	kv.Rf.Kill()
@@ -242,20 +227,7 @@ func (kv *KVServer) Listener() {
 	}
 }
 
-//
-// servers[] contains the ports of the set of
-// servers that will cooperate via Raft to
-// form the fault-tolerant key/value service.
-// me is the index of the current server in servers[].
-// the k/v server should store snapshots through the underlying Raft
-// implementation, which should call persister.SaveStateAndSnapshot() to
-// atomically save the Raft state along with the snapshot.
-// the k/v server should snapshot when Raft's saved state exceeds maxraftstate bytes,
-// in order to allow Raft to garbage-collect its log. if maxraftstate is -1,
-// you don't need to snapshot.
-// StartKVServer() must return quickly, so it should start goroutines
-// for any long-running work.
-//
+//  Start a kv server, including making a new raft instance
 func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int, consoleBinding binding.ExternalStringList) *KVServer {
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
@@ -285,6 +257,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	return kv
 }
 
+//  Update binding data for GUI to display
 func (kv *KVServer) updateServerStore() {
 	kvPair := make([]string, 0)
 	for k, v := range kv.kvStore {
@@ -296,7 +269,4 @@ func (kv *KVServer) updateServerStore() {
 		//fmt.Println("Here", err)
 		return
 	}
-	//v, _ := kv.ServerStore.Get()
-	//fmt.Println("Server store: -----------", v)
-
 }

@@ -16,7 +16,6 @@ type Raft struct {
 
 	applyCh     chan ApplyMsg // channel to send commit
 	consoleLogs binding.ExternalStringList
-	//consoleLogCh chan string
 
 	// Persistent State on all servers
 	CurrentTerm int
@@ -49,10 +48,8 @@ type Raft struct {
 	applyCond *sync.Cond
 
 	// Relevant server info in a string list
-	//ServerInfo []string
 	ServerInfo binding.ExternalStringList
 	ServerLog  binding.ExternalStringList
-	//ServerApply binding.ExternalStringList
 }
 
 type LogEntry struct {
