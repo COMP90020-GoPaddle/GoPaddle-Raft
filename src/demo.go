@@ -425,7 +425,7 @@ func main() {
 			text2.Move(fyne.NewPos(float32(60+(index-1)*230), 260))
 			rect1.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
 			logEntries.Move(fyne.NewPos(float32(45+(index-1)*230), 280))
-			text3.Move(fyne.NewPos(float32(50+(index-1)*230), 360))
+			text3.Move(fyne.NewPos(float32(65+(index-1)*230), 360))
 			rect2.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
 			applies.Move(fyne.NewPos(float32(45+(index-1)*230), 380))
 			btn1.Move(fyne.NewPos(float32(80+(index-1)*230), 680))
