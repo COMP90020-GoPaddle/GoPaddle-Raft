@@ -552,15 +552,17 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			//newLog = append(rf.log[:nextIndex+conflictIndex], args.Entries[conflictIndex:]...)
 			newEntries := make([]LogEntry, len(args.Entries[conflictIndex:]))
 			copy(newEntries, args.Entries[conflictIndex:])
+			oldLogLen := len(rf.log)
 			rf.log = append(rf.log[:nextIndex+conflictIndex], newEntries...)
 			//fmt.Printf("Rf log after append: %v\n", rf.log)
 
 			// update server logs one by one
 			for i := 0; i < len(args.Entries[conflictIndex:]); i++ {
-				fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries[i]))
-				fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
+				//fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries[i]))
+				//fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
+				fmt.Println("Conflict index: *************", conflictIndex)
 				// Serverlog update
-				rf.updateServerLogs(newEntries[i])
+				rf.updateServerLogs(oldLogLen+i, newEntries[i])
 			}
 			//rf.log = newLog
 			rf.persist()
@@ -685,7 +687,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if term, isLeader = rf.GetState(); isLeader {
 		rf.mu.Lock()
 		rf.log = append(rf.log, LogEntry{Command: command, Term: rf.CurrentTerm})
-		rf.updateServerLogs(LogEntry{Command: command, Term: rf.CurrentTerm})
+		fmt.Println("Log length after start command:================", len(rf.log))
+		rf.updateServerLogs(len(rf.log)-1, LogEntry{Command: command, Term: rf.CurrentTerm})
 		rf.persist()
 		rf.matchIndex[rf.Me] = len(rf.log) - 1
 		index = len(rf.log) - 1
@@ -826,8 +829,8 @@ func (rf *Raft) updateConsoleLogs(newLog string) {
 	rf.consoleLogs.Append(newLog + "\n")
 }
 
-func (rf *Raft) updateServerLogs(newEntry LogEntry) {
-	entryStr := logEntryToStr(newEntry)
+func (rf *Raft) updateServerLogs(idx int, newEntry LogEntry) {
+	entryStr := logEntryToStr(idx, newEntry)
 	//fmt.Println(entryStr)
 	rf.ServerLog.Append(entryStr + "\n")
 	//results, _ := rf.ServerLog.Get()
