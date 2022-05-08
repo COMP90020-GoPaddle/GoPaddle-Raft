@@ -21,6 +21,7 @@ func (manager *Manager) StartSevers(num int, unreliable bool) {
 }
 
 func (manager *Manager) ShutDown(serverID int) {
+	manager.Disconnect(serverID)
 	manager.Cfg.ShutdownServer(serverID)
 }
 

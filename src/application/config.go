@@ -111,7 +111,7 @@ func (cfg *Config) ShutdownServer(i int) {
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
 
-	cfg.disconnectUnlocked(i, cfg.All())
+	//cfg.disconnectUnlocked(i, cfg.All())
 
 	// disable client connections to the server.
 	// it's important to do this before creating
