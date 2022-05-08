@@ -58,8 +58,17 @@ func (manager *Manager) Restart(serverID int) {
 }
 
 func (manager *Manager) Reconnect(serverID int) {
+	otherServers := make([]int, 0)
+	for j := 0; j < manager.Cfg.n; j++ {
+		if manager.Cfg.Kvservers[j].disconn {
+			continue
+		}
+		if j != serverID {
+			otherServers = append(otherServers, j)
+		}
+	}
 	manager.Cfg.Kvservers[serverID].disconn = false
-	manager.Cfg.connectUnlocked(serverID, manager.Cfg.All())
+	manager.Cfg.connect(serverID, otherServers)
 }
 
 func (manager *Manager) ReconnectAll() {

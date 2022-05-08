@@ -75,6 +75,12 @@ func (cfg *Config) connectUnlocked(i int, to []int) {
 	}
 }
 
+func (cfg *Config) connect(i int, to []int) {
+	cfg.mu.Lock()
+	defer cfg.mu.Unlock()
+	cfg.connectUnlocked(i, to)
+}
+
 // Randomize server handles
 func random_handles(kvh []*labrpc.ClientEnd) []*labrpc.ClientEnd {
 	sa := make([]*labrpc.ClientEnd, len(kvh))
