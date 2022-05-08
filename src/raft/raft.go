@@ -387,10 +387,11 @@ func (rf *Raft) readPersist(data []byte) {
 		//update server info
 		//fmt.Println("readPersist success! -----", rf.CurrentTerm, rf.VotedFor, rf.log)
 		rf.updateServerInfo()
-		for i := 1; i < len(rf.log); i++ {
-			fmt.Println("Previous entry: =============== ", rf.log[i])
-			rf.updateServerLogs(i, rf.log[i])
-		}
+		//for i := 1; i < len(rf.log); i++ {
+		//	fmt.Println("Previous entry: =============== ", rf.log[i])
+		//	rf.updateServerLogs(i, rf.log[i])
+		//}
+		rf.updateServerLogsinOne()
 		//ss, _ := rf.ServerInfo.Get()
 		//fmt.Println("updateServerInfo success! ------, serverInfo:", ss)
 		//rf.InfoCh <- true
@@ -557,18 +558,18 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			//newLog = append(rf.log[:nextIndex+conflictIndex], args.Entries[conflictIndex:]...)
 			newEntries := make([]LogEntry, len(args.Entries[conflictIndex:]))
 			copy(newEntries, args.Entries[conflictIndex:])
-			oldLogLen := len(rf.log)
+			//oldLogLen := len(rf.log)
 			rf.log = append(rf.log[:nextIndex+conflictIndex], newEntries...)
 			//fmt.Printf("Rf log after append: %v\n", rf.log)
-
+			rf.updateServerLogsinOne()
 			// update server logs one by one
-			for i := 0; i < len(args.Entries[conflictIndex:]); i++ {
-				//fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries[i]))
-				//fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
-				fmt.Println("Conflict index: *************", conflictIndex)
-				// Serverlog update
-				rf.updateServerLogs(oldLogLen+i, newEntries[i])
-			}
+			//for i := 0; i < len(args.Entries[conflictIndex:]); i++ {
+			//	//fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries[i]))
+			//	//fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
+			//	fmt.Println("Conflict index: *************", conflictIndex)
+			//	// Serverlog update
+			//	rf.updateServerLogs(oldLogLen+i, newEntries[i])
+			//}
 			//rf.log = newLog
 			rf.persist()
 			rf.updateConsoleLogs(DLog("Raft Server[%v]: Receive %v from Leader | Log Length: %d",
@@ -693,7 +694,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		rf.mu.Lock()
 		rf.log = append(rf.log, LogEntry{Command: command, Term: rf.CurrentTerm})
 		fmt.Println("Log length after start command:================", len(rf.log))
-		rf.updateServerLogs(len(rf.log)-1, LogEntry{Command: command, Term: rf.CurrentTerm})
+		//rf.updateServerLogs(len(rf.log)-1, LogEntry{Command: command, Term: rf.CurrentTerm})
+		rf.updateServerLogsinOne()
 		rf.persist()
 		rf.matchIndex[rf.Me] = len(rf.log) - 1
 		index = len(rf.log) - 1
@@ -837,7 +839,24 @@ func (rf *Raft) updateConsoleLogs(newLog string) {
 func (rf *Raft) updateServerLogs(idx int, newEntry LogEntry) {
 	entryStr := logEntryToStr(idx, newEntry)
 	//fmt.Println(entryStr)
+
 	rf.ServerLog.Append(entryStr + "\n")
+	//results, _ := rf.ServerLog.Get()
+	//fmt.Printf("Demo log: %v\n", results)
+}
+
+func (rf *Raft) updateServerLogsinOne() {
+	totalLogStr := make([]string, 0)
+	for idx, entry := range rf.log {
+		if idx == 0 {
+			continue
+		}
+		entryStr := logEntryToStr(idx, entry)
+		totalLogStr = append(totalLogStr, entryStr)
+	}
+	//fmt.Println(entryStr)
+
+	rf.ServerLog.Set(totalLogStr)
 	//results, _ := rf.ServerLog.Get()
 	//fmt.Printf("Demo log: %v\n", results)
 }
