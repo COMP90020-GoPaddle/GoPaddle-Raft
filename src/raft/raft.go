@@ -237,8 +237,8 @@ func (rf *Raft) broadcast() {
 			}
 
 			if len(args.Entries) > 0 {
-				rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Send to Server[%d]: %v",
-					rf.Me+1, rf.CommitIndex+1, id+1, args.Entries))
+				rf.updateConsoleLogs(DLog("Leader Server[%d]: AppendEntriesRPC[Entries len:%d] sent to Server[%d]: %v",
+					rf.Me+1, len(args.Entries), id+1, args.Entries))
 			}
 
 			rf.mu.Unlock()
@@ -257,8 +257,8 @@ func (rf *Raft) broadcast() {
 				// whether the appendEntries are accepted
 				if reply.Success {
 					if len(args.Entries) > 0 {
-						rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Accepted by Server[%v]: | current term: %d",
-							rf.Me+1, args.LeaderCommit+1, id+1, rf.CurrentTerm))
+						rf.updateConsoleLogs(DLog("Leader Server[%d]: AppendEntriesRPC[Entries len:%d] Accepted by Server[%d] | current term: %d",
+							rf.Me+1, len(args.Entries), id+1, rf.CurrentTerm))
 					}
 					// update the matchIndex and nextIndex, check if the logEntry can be committed
 					DPrintf("[broadcast | reply true] raft %d broadcast to %d accepted | current term: %d | current State: %d\n",
@@ -269,14 +269,12 @@ func (rf *Raft) broadcast() {
 					rf.nextIndex[id] = rf.matchIndex[id] + 1
 					rf.checkN()
 				} else {
-					if len(args.Entries) > 0 {
-						rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Rejected by Server[%v] | current term: %d | reply term: %d",
-							rf.Me+1, args.LeaderCommit+1, id+1, rf.CurrentTerm, reply.Term))
-					}
 					DPrintf("[broadcast | reply false] raft %d broadcast to %d rejected | current term: %d | current state: %d | reply term: %d\n",
 						rf.Me, id, rf.CurrentTerm, rf.State, reply.Term)
 					// get higher term, convert to follower and match the term
 					if rf.CurrentTerm < reply.Term {
+						rf.updateConsoleLogs(DLog("Leader Server[%d]: [Smaller Term] AppendEntriesRPC Rejected by Server[%d]| current term: %d | reply term: %d",
+							rf.Me+1, id+1, rf.CurrentTerm, reply.Term))
 						rf.convertTo(FOLLOWER)
 						rf.CurrentTerm = reply.Term
 						// update server info
@@ -294,8 +292,8 @@ func (rf *Raft) broadcast() {
 						rf.nextIndex[id] = reply.ConflictIndex
 					}
 					if len(args.Entries) > 0 {
-						rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Send Retry to Server[%v] | nextIndex: %d",
-							rf.Me+1, args.LeaderCommit+1, id+1, rf.nextIndex[id]))
+						rf.updateConsoleLogs(DLog("Leader Server[%d]: [Conflict Index] AppendEntriesRPC Rejected by Server[%v] | Retry Index: %d",
+							rf.Me+1, id+1, rf.nextIndex[id]))
 					}
 					DPrintf("[appendEntriesAsync] raft %d append entries to %d rejected: decrement nextIndex and retry | nextIndex: %d\n",
 						rf.Me, id, rf.nextIndex[id])
@@ -307,10 +305,10 @@ func (rf *Raft) broadcast() {
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
 				// failed broadcasting
-				if len(args.Entries) > 2 {
-					rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] RPC to %d failed | current term: %d",
-						rf.Me+1, args.LeaderCommit+1, id+1, rf.CurrentTerm))
-				}
+
+				//rf.updateConsoleLogs(DLog("Leader Server[%d]: [RPC Failed] AppendEntriesRPC to server %d Failed | current term: %d",
+				//	rf.Me+1, id+1, rf.CurrentTerm))
+
 				DPrintf("[broadcast | no reply] raft %d RPC to %d failed | current term: %d | current state: %d \n",
 					rf.Me, id, rf.CurrentTerm, rf.State)
 			}
@@ -385,16 +383,11 @@ func (rf *Raft) readPersist(data []byte) {
 		rf.CurrentTerm = currentTerm
 		rf.VotedFor = votedFor
 		rf.log = log
-
 		//update server info
-		//fmt.Println("readPersist success! -----", rf.CurrentTerm, rf.VotedFor, rf.log)
+		fmt.Println("readPersist success! -----", rf.CurrentTerm, rf.VotedFor, rf.log)
 		rf.updateServerInfo()
-		for i := 1; i < len(rf.log); i++ {
-			fmt.Println("Previous entry: =============== ", rf.log[i])
-			rf.updateServerLogs(i, rf.log[i])
-		}
-		//ss, _ := rf.ServerInfo.Get()
-		//fmt.Println("updateServerInfo success! ------, serverInfo:", ss)
+		ss, _ := rf.ServerInfo.Get()
+		fmt.Println("updateServerInfo success! ------, serverInfo:", ss)
 		//rf.InfoCh <- true
 	}
 
@@ -559,21 +552,19 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			//newLog = append(rf.log[:nextIndex+conflictIndex], args.Entries[conflictIndex:]...)
 			newEntries := make([]LogEntry, len(args.Entries[conflictIndex:]))
 			copy(newEntries, args.Entries[conflictIndex:])
-			oldLogLen := len(rf.log)
 			rf.log = append(rf.log[:nextIndex+conflictIndex], newEntries...)
 			//fmt.Printf("Rf log after append: %v\n", rf.log)
 
 			// update server logs one by one
 			for i := 0; i < len(args.Entries[conflictIndex:]); i++ {
-				//fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries[i]))
-				//fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
-				fmt.Println("Conflict index: *************", conflictIndex)
+				fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries[i]))
+				fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
 				// Serverlog update
-				rf.updateServerLogs(oldLogLen+i, newEntries[i]):
+				rf.updateServerLogs(newEntries[i])
 			}
 			//rf.log = newLog
 			rf.persist()
-			rf.updateConsoleLogs(DLog("Raft Server[%v]: Receive %v Rrom Leader | Log Length: %d",
+			rf.updateConsoleLogs(DLog("Raft Server[%v]: Receive %v from Leader | Log Length: %d",
 				rf.Me+1, newEntries, len(rf.log)))
 			DPrintf("[AppendEntries] raft %d appended entries from leader | log length: %d\n", rf.Me, len(rf.log))
 		}
@@ -641,8 +632,8 @@ func (rf *Raft) applyEntries() {
 
 				DPrintf("[applyEntries]: Id %d Term %d State %d\t||\tapply command %v of index %d and term %d to applyCh\n",
 					rf.Me, rf.CurrentTerm, rf.State, applyMsg.Command, applyMsg.CommandIndex, rf.log[i].Term)
-				rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Successful Apply, commit now: %v",
-					rf.Me+1, lastApplied+1, applyMsg.Command))
+				rf.updateConsoleLogs(DLog("Raft Server[%d]: Log[index %d] is committed, apply now: %v",
+					rf.Me+1, i, applyMsg.Command))
 				rf.mu.Unlock()
 				rf.applyCh <- applyMsg
 
@@ -694,12 +685,11 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if term, isLeader = rf.GetState(); isLeader {
 		rf.mu.Lock()
 		rf.log = append(rf.log, LogEntry{Command: command, Term: rf.CurrentTerm})
-		fmt.Println("Log length after start command:================", len(rf.log))
-		rf.updateServerLogs(len(rf.log)-1, LogEntry{Command: command, Term: rf.CurrentTerm})
+		rf.updateServerLogs(LogEntry{Command: command, Term: rf.CurrentTerm})
 		rf.persist()
 		rf.matchIndex[rf.Me] = len(rf.log) - 1
 		index = len(rf.log) - 1
-		rf.updateConsoleLogs(DLog("Raft Server[%v]: Command[%v] Replicated | current term: %d",
+		rf.updateConsoleLogs(DLog("Leader Server[%d]: New Command Recorded | current logIndex: %d | current term: %d",
 			rf.Me+1, rf.matchIndex[rf.Me], rf.CurrentTerm))
 		DPrintf("[Start] raft %d replicate command %v to log | current term: %d | current State: %d | log length: %d\n",
 			rf.Me, command, rf.CurrentTerm, rf.State, len(rf.log))
@@ -836,8 +826,8 @@ func (rf *Raft) updateConsoleLogs(newLog string) {
 	rf.consoleLogs.Append(newLog + "\n")
 }
 
-func (rf *Raft) updateServerLogs(idx int, newEntry LogEntry) {
-	entryStr := logEntryToStr(idx, newEntry)
+func (rf *Raft) updateServerLogs(newEntry LogEntry) {
+	entryStr := logEntryToStr(newEntry)
 	//fmt.Println(entryStr)
 	rf.ServerLog.Append(entryStr + "\n")
 	//results, _ := rf.ServerLog.Get()
