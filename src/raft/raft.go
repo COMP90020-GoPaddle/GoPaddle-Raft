@@ -385,11 +385,13 @@ func (rf *Raft) readPersist(data []byte) {
 		rf.CurrentTerm = currentTerm
 		rf.VotedFor = votedFor
 		rf.log = log
+
 		//update server info
 		//fmt.Println("readPersist success! -----", rf.CurrentTerm, rf.VotedFor, rf.log)
 		rf.updateServerInfo()
-		for _, entry := range rf.log {
-			rf.updateServerLogs(entry)
+		for i := 1; i < len(rf.log); i++ {
+			fmt.Println("Previous entry: =============== ", rf.log[i])
+			rf.updateServerLogs(rf.log[i])
 		}
 		//ss, _ := rf.ServerInfo.Get()
 		//fmt.Println("updateServerInfo success! ------, serverInfo:", ss)
