@@ -3,6 +3,7 @@ package application
 import (
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -260,10 +261,16 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 //  Update binding data for GUI to display
 func (kv *KVServer) updateServerStore() {
 	kvPair := make([]string, 0)
-	for k, v := range kv.kvStore {
-		//fmt.Println("kv store: =======", k, v)
-		kvPair = append(kvPair, fmt.Sprintf("[%v]:[%v]\n", k, v))
+	keys := make([]string, 0)
+	for k, _ := range kv.kvStore {
+		keys = append(keys, k)
 	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		kvPair = append(kvPair, fmt.Sprintf("[%v]:[%v]\n", k, kv.kvStore[k]))
+	}
+
 	err := kv.ServerStore.Set(kvPair)
 	if err != nil {
 		//fmt.Println("Here", err)
