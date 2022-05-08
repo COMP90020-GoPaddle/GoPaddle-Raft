@@ -3,7 +3,6 @@ package application
 import (
 	"GoPaddle-Raft/raft"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 )
@@ -68,19 +67,35 @@ func (manager *Manager) ReconnectAll() {
 }
 
 func (manager *Manager) MakePartition() {
-	a := make([]int, manager.Cfg.n)
-	for i := 0; i < manager.Cfg.n; i++ {
-		a[i] = (rand.Int() % 2)
-	}
+	//a := make([]int, manager.Cfg.n)
+	//for i := 0; i < manager.Cfg.n; i++ {
+	//	a[i] = (rand.Int() % 2)
+	//}
+	smallSet := manager.Cfg.n / 2
+	largerSet := manager.Cfg.n - smallSet
 	pa := make([][]int, 2)
-	for i := 0; i < 2; i++ {
-		pa[i] = make([]int, 0)
-		for j := 0; j < manager.Cfg.n; j++ {
-			if a[j] == i {
-				pa[i] = append(pa[i], j)
+	pa[0] = make([]int, 0)
+	pa[1] = make([]int, 0)
+	for j := 0; j < manager.Cfg.n; j++ {
+		// if the current server is leader
+		if manager.Cfg.Kvservers[j].Rf.State == 2 {
+			pa[0] = append(pa[0], j)
+		} else {
+			if len(pa[1]) < largerSet {
+				pa[1] = append(pa[1], j)
+			} else {
+				pa[0] = append(pa[0], j)
 			}
 		}
 	}
+	//for i := 0; i < 2; i++ {
+	//	pa[i] = make([]int, 0)
+	//	for j := 0; j < manager.Cfg.n; j++ {
+	//		if a[j] == i {
+	//			pa[i] = append(pa[i], j)
+	//		}
+	//	}
+	//}
 	manager.Cfg.partition(pa[0], pa[1])
 }
 

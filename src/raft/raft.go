@@ -386,10 +386,13 @@ func (rf *Raft) readPersist(data []byte) {
 		rf.VotedFor = votedFor
 		rf.log = log
 		//update server info
-		fmt.Println("readPersist success! -----", rf.CurrentTerm, rf.VotedFor, rf.log)
+		//fmt.Println("readPersist success! -----", rf.CurrentTerm, rf.VotedFor, rf.log)
 		rf.updateServerInfo()
-		ss, _ := rf.ServerInfo.Get()
-		fmt.Println("updateServerInfo success! ------, serverInfo:", ss)
+		for _, entry := range rf.log {
+			rf.updateServerLogs(entry)
+		}
+		//ss, _ := rf.ServerInfo.Get()
+		//fmt.Println("updateServerInfo success! ------, serverInfo:", ss)
 		//rf.InfoCh <- true
 	}
 
@@ -559,8 +562,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 			// update server logs one by one
 			for i := 0; i < len(args.Entries[conflictIndex:]); i++ {
-				fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries[i]))
-				fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
+				//fmt.Printf(fmt.Sprintf("Changed log%v\n", newEntries[i]))
+				//fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
 				// Serverlog update
 				rf.updateServerLogs(newEntries[i])
 			}
