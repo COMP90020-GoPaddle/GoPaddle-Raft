@@ -12,6 +12,7 @@ type Clerk struct {
 	leaderId      int
 	clientId      int64
 	lastRequestId int
+	timeoutId     int
 }
 
 var Cid int64 = 0
@@ -33,6 +34,11 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 func (ck *Clerk) Get(key string) string {
 	// requestId ready to update
 	updatedRequestId := ck.lastRequestId + 1
+	if ck.timeoutId >= updatedRequestId {
+		updatedRequestId = ck.timeoutId + 1
+	}
+
+	DPrintf("IDs: TimeOut ID:%v | LastID:%v | NowID:%v", ck.timeoutId, ck.lastRequestId, updatedRequestId)
 
 	args := GetArgs{
 		Key:       key,
@@ -43,6 +49,7 @@ func (ck *Clerk) Get(key string) string {
 	cnt := 0
 	for {
 		if cnt > 20 {
+			ck.timeoutId = updatedRequestId
 			return "Timeout"
 		}
 		savedLeaderId := ck.leaderId
@@ -74,6 +81,11 @@ func (ck *Clerk) Get(key string) string {
 func (ck *Clerk) PutAppend(key string, value string, op string) string {
 	// requestId ready to update
 	updatedRequestId := ck.lastRequestId + 1
+	if ck.timeoutId >= updatedRequestId {
+		updatedRequestId = ck.timeoutId + 1
+	}
+
+	DPrintf("IDs: TimeOut ID:%v | LastID:%v | NowID:%v", ck.timeoutId, ck.lastRequestId, updatedRequestId)
 	args := PutAppendArgs{
 		Key:       key,
 		Value:     value,
@@ -85,6 +97,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) string {
 	cnt := 0
 	for {
 		if cnt > 20 {
+			ck.timeoutId = updatedRequestId
 			DPrintf("%v Timeout", op)
 			return "Timeout"
 		}

@@ -36,7 +36,7 @@ var t0 = time.Now()
 //
 //}
 
-func main() {
+func mian() {
 	var nServers string
 	fmt.Println("Enter the number of servers: ")
 	fmt.Scanln(&nServers)
