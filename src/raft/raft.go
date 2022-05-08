@@ -569,7 +569,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 				//fmt.Printf(fmt.Sprintf("Command: ----------%v\n", newEntries[i].Command))
 				fmt.Println("Conflict index: *************", conflictIndex)
 				// Serverlog update
-				rf.updateServerLogs(oldLogLen+i, newEntries[i])
+				rf.updateServerLogs(oldLogLen+i, newEntries[i]):
 			}
 			//rf.log = newLog
 			rf.persist()
