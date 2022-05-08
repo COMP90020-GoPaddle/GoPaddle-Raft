@@ -1,3 +1,11 @@
+/*
+References Framework and Paper:
+[1]	“6.824 Schedule: Spring 2022,” Mit.edu. [Online]. Available: https://pdos.csail.mit.edu/6.824/schedule.html.
+[2]	“6.824 Lab 2: Raft,” Mit.edu. [Online]. Available: https://pdos.csail.mit.edu/6.824/labs/lab-raft.html.
+[3]	“6.824 lab 3: Fault-tolerant key/value service,” Mit.edu. [Online]. Available: https://pdos.csail.mit.edu/6.824/labs/lab-kvraft.html.
+[4]	D. Ongaro and J. Ousterhout, “In search of an understandable consensus algorithm (extended version),” Mit.edu. [Online]. Available: https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf.
+*/
+
 package labgob
 
 //
@@ -7,13 +15,15 @@ package labgob
 // about non-capitalized field names.
 //
 
-import "encoding/gob"
-import "io"
-import "reflect"
-import "fmt"
-import "sync"
-import "unicode"
-import "unicode/utf8"
+import (
+	"encoding/gob"
+	"fmt"
+	"io"
+	"reflect"
+	"sync"
+	"unicode"
+	"unicode/utf8"
+)
 
 var mu sync.Mutex
 var errorCount int // for TestCapital

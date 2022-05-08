@@ -1,3 +1,11 @@
+/*
+References Framework and Paper:
+[1]	“6.824 Schedule: Spring 2022,” Mit.edu. [Online]. Available: https://pdos.csail.mit.edu/6.824/schedule.html.
+[2]	“6.824 Lab 2: Raft,” Mit.edu. [Online]. Available: https://pdos.csail.mit.edu/6.824/labs/lab-raft.html.
+[3]	“6.824 lab 3: Fault-tolerant key/value service,” Mit.edu. [Online]. Available: https://pdos.csail.mit.edu/6.824/labs/lab-kvraft.html.
+[4]	D. Ongaro and J. Ousterhout, “In search of an understandable consensus algorithm (extended version),” Mit.edu. [Online]. Available: https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf.
+*/
+
 package labrpc
 
 //
@@ -49,15 +57,17 @@ package labrpc
 //   pass svc to srv.AddService()
 //
 
-import "GoPaddle-Raft/labgob"
-import "bytes"
-import "reflect"
-import "sync"
-import "log"
-import "strings"
-import "math/rand"
-import "time"
-import "sync/atomic"
+import (
+	"GoPaddle-Raft/labgob"
+	"bytes"
+	"log"
+	"math/rand"
+	"reflect"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+)
 
 type reqMsg struct {
 	endname  interface{} // name of sending ClientEnd
